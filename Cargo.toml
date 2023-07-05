@@ -1,0 +1,14 @@
+[workspace]
+members = ["shared", "shared_types"]
+
+[workspace.package]
+authors = ["stuart.harris@red-badger.com"]
+edition = "2021"
+repository = "https://github.com/stuartharris/carbon/"
+keywords = ["green", "sustainabiity"]
+license = "Apache-2.0"
+rust-version = "1.66"
+
+[workspace.dependencies]
+anyhow = "1.0.71"
+serde = "1.0.164"
