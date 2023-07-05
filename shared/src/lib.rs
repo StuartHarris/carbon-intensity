@@ -1,4 +1,7 @@
-mod app;
+pub mod app;
+pub mod capabilities;
+mod model;
+pub mod view_model;
 
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -12,7 +15,7 @@ pub use app::*;
 uniffi::include_scaffolding!("shared");
 
 lazy_static! {
-    static ref CORE: Bridge<Effect, Hello> = Bridge::new(Core::new::<Capabilities>());
+    static ref CORE: Bridge<Effect, App> = Bridge::new(Core::new::<Capabilities>());
 }
 
 #[wasm_bindgen]
