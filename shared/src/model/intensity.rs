@@ -14,20 +14,6 @@ pub(crate) fn url(from: &str, outcode: &str) -> Url {
     url
 }
 
-#[derive(Default, Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct Set {
-    pub past: Vec<Period>,
-    pub future: Vec<Period>,
-}
-
-impl Set {
-    pub fn all(&self) -> Vec<Period> {
-        let mut all = self.past.clone();
-        all.extend(self.future.clone());
-        all
-    }
-}
-
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Period {
     #[serde(deserialize_with = "period_date_time_deserialize")]

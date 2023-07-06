@@ -3,6 +3,27 @@ use serde::{Deserialize, Serialize};
 use crate::model::intensity;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Category {
+    Total,
+    Gas,
+    Coal,
+    Biomass,
+    Nuclear,
+    Hydro,
+    Imports,
+    Other,
+    Wind,
+    Solar,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataPoint {
+    pub date: String,
+    pub intensity: i32,
+    pub category: Category,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Period {
     pub from: String,
     pub to: String,
@@ -33,11 +54,5 @@ impl From<intensity::Intensity> for Intensity {
             actual: value.actual,
             index: value.index,
         }
-    }
-}
-
-impl From<intensity::Set> for Vec<Period> {
-    fn from(value: intensity::Set) -> Self {
-        value.all().into_iter().map(|p| p.into()).collect()
     }
 }

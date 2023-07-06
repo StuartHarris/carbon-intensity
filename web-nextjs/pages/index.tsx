@@ -13,7 +13,6 @@ import {
   Legend,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
-import faker from "faker";
 
 import init_core, {
   process_event,
@@ -144,8 +143,8 @@ const Home: NextPage = () => {
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
           let data: any = undefined;
-          if (viewModel.window?.length > 0) {
-            const labels = viewModel.window.map((period) => {
+          if (viewModel.periods?.length > 0) {
+            const labels = viewModel.periods.map((period) => {
               const date = new Date(period.from);
               return `${zeroPad(date.getHours(), 2)}:${zeroPad(
                 date.getMinutes(),
@@ -158,7 +157,7 @@ const Home: NextPage = () => {
                 {
                   fill: true,
                   label: "Forecast",
-                  data: viewModel.window.map(
+                  data: viewModel.periods.map(
                     (period) => period.intensity.forecast
                   ),
                   borderColor: "rgb(53, 162, 235)",
@@ -261,12 +260,12 @@ const Home: NextPage = () => {
                 dispatch({
                   kind: "event",
                   event: new types.EventVariantSwitchMode(
-                    new types.ModeVariantHere()
+                    new types.ModeVariantLocal()
                   ),
                 })
               }
             >
-              {"Here"}
+              {"Local"}
             </button>
           </div>
         </section>

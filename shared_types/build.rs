@@ -10,7 +10,7 @@ fn main() {
     gen.register_app::<App>().expect("register");
 
     // we might be able to get rid of this if we use all variants of the enum
-    gen.register_type_with_samples(vec![Mode::National, Mode::Here])
+    gen.register_type_with_samples(vec![Mode::National, Mode::Local])
         .expect("register");
 
     let output_root = PathBuf::from("./generated");

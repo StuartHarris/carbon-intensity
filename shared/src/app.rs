@@ -5,10 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     capabilities::location::{GetLocation, LocationResponse},
-    model::{
-        intensity::{self, Set},
-        postcode, regional, Model,
-    },
+    model::{intensity, postcode, regional, Model},
     view_model, Mode,
 };
 
@@ -30,7 +27,8 @@ pub struct ViewModel {
     pub mode: Mode,
     pub outcode: Option<String>,
     pub admin_district: Option<String>,
-    pub window: Vec<view_model::Period>,
+    pub periods: Vec<view_model::Period>,
+    // pub points: Vec<view_model::DataPoint>,
 }
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
@@ -54,10 +52,10 @@ impl crux_core::App for App {
         match event {
             Event::SwitchMode(Mode::National) => {
                 model.mode = Mode::National;
-                model.national = Set::default();
+                model.periods = vec![];
             }
-            Event::SwitchMode(Mode::Here) => {
-                model.mode = Mode::Here;
+            Event::SwitchMode(Mode::Local) => {
+                model.mode = Mode::Local;
                 caps.location.get(Event::SetLocation);
             }
             Event::SetLocation(LocationResponse {
@@ -87,11 +85,7 @@ impl crux_core::App for App {
             Event::SetPostcode(Err(_)) => {}
             Event::SetRegional(Ok(mut regional)) => {
                 let regional = regional.take_body().unwrap();
-                let future = regional.data.data.clone();
-                model.here = Set {
-                    future,
-                    ..Default::default()
-                };
+                model.periods = regional.data.data.clone();
 
                 caps.render.render();
             }
@@ -103,13 +97,16 @@ impl crux_core::App for App {
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         ViewModel {
-            window: match model.mode {
-                Mode::National => model.national.clone().into(),
-                Mode::Here => model.here.clone().into(),
-            },
+            periods: model
+                .periods
+                .clone()
+                .into_iter()
+                .map(view_model::Period::from)
+                .collect(),
             mode: model.mode.clone(),
             outcode: model.outcode.clone(),
             admin_district: model.admin_district.clone(),
+            // points: Default::default(),
         }
     }
 }
@@ -132,8 +129,8 @@ mod tests {
         let mut model = Model::default();
 
         // switch to "here" mode and check we update the model and get a location request
-        let update = app.update(Event::SwitchMode(Mode::Here), &mut model);
-        assert_eq!(model.mode, Mode::Here);
+        let update = app.update(Event::SwitchMode(Mode::Local), &mut model);
+        assert_eq!(model.mode, Mode::Local);
         let requests = &mut update.into_effects().filter_map(Effect::into_location);
 
         // get the first location request and check there are no more
@@ -231,60 +228,58 @@ mod tests {
             let update = app.update(event, &mut model);
             assert_effect!(update, Effect::Render(_));
         }
-        insta::assert_yaml_snapshot!(model.here, @r###"
+        insta::assert_yaml_snapshot!(model.periods, @r###"
         ---
-        past: []
-        future:
-          - from: "2023-07-04T23:30:00Z"
-            to: "2023-07-05T00:00:00Z"
-            intensity:
-              forecast: 121
-              actual: ~
-              index: moderate
-            generationmix:
-              - fuel: biomass
-                perc: 0
-              - fuel: coal
-                perc: 0
-              - fuel: imports
-                perc: 66.1
-              - fuel: gas
-                perc: 17.2
-              - fuel: nuclear
-                perc: 0
-              - fuel: other
-                perc: 0
-              - fuel: hydro
-                perc: 0.2
-              - fuel: solar
-                perc: 0
-              - fuel: wind
-                perc: 16.5
-          - from: "2023-07-05T00:00:00Z"
-            to: "2023-07-05T00:30:00Z"
-            intensity:
-              forecast: 116
-              actual: ~
-              index: low
-            generationmix:
-              - fuel: biomass
-                perc: 0
-              - fuel: coal
-                perc: 0
-              - fuel: imports
-                perc: 65.6
-              - fuel: gas
-                perc: 16.1
-              - fuel: nuclear
-                perc: 0
-              - fuel: other
-                perc: 0
-              - fuel: hydro
-                perc: 0.2
-              - fuel: solar
-                perc: 0.1
-              - fuel: wind
-                perc: 18
+        - from: "2023-07-04T23:30:00Z"
+          to: "2023-07-05T00:00:00Z"
+          intensity:
+            forecast: 121
+            actual: ~
+            index: moderate
+          generationmix:
+            - fuel: biomass
+              perc: 0
+            - fuel: coal
+              perc: 0
+            - fuel: imports
+              perc: 66.1
+            - fuel: gas
+              perc: 17.2
+            - fuel: nuclear
+              perc: 0
+            - fuel: other
+              perc: 0
+            - fuel: hydro
+              perc: 0.2
+            - fuel: solar
+              perc: 0
+            - fuel: wind
+              perc: 16.5
+        - from: "2023-07-05T00:00:00Z"
+          to: "2023-07-05T00:30:00Z"
+          intensity:
+            forecast: 116
+            actual: ~
+            index: low
+          generationmix:
+            - fuel: biomass
+              perc: 0
+            - fuel: coal
+              perc: 0
+            - fuel: imports
+              perc: 65.6
+            - fuel: gas
+              perc: 16.1
+            - fuel: nuclear
+              perc: 0
+            - fuel: other
+              perc: 0
+            - fuel: hydro
+              perc: 0.2
+            - fuel: solar
+              perc: 0.1
+            - fuel: wind
+              perc: 18
         "###);
     }
 }

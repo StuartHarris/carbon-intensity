@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use self::intensity::Set;
+use self::intensity::Period;
 
+pub mod factors;
 pub mod global;
 pub mod intensity;
 pub mod location;
@@ -12,7 +13,7 @@ pub mod regional;
 pub enum Mode {
     #[default]
     National,
-    Here,
+    Local,
 }
 
 #[derive(Default)]
@@ -20,6 +21,5 @@ pub struct Model {
     pub mode: Mode,
     pub outcode: Option<String>,
     pub admin_district: Option<String>,
-    pub national: Set,
-    pub here: Set,
+    pub periods: Vec<Period>,
 }
