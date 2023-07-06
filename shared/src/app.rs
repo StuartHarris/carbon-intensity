@@ -53,9 +53,11 @@ impl crux_core::App for App {
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
             Event::SwitchMode(Mode::National) => {
+                model.mode = Mode::National;
                 model.national = Set::default();
             }
             Event::SwitchMode(Mode::Here) => {
+                model.mode = Mode::Here;
                 caps.location.get(Event::SetLocation);
             }
             Event::SetLocation(LocationResponse {
@@ -73,7 +75,7 @@ impl crux_core::App for App {
                 let postcode = postcode.take_body().unwrap();
                 let postcode = postcode.result[0].clone();
                 let outcode = postcode.outcode; // TODO error handling
-                let from = "2023-07-05T00:00Z"; // TODO
+                let from = "2023-07-06T20:30Z"; // TODO
                 let url = intensity::url(&from, &outcode);
 
                 model.outcode = Some(outcode);
@@ -129,11 +131,10 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        // switch to "here" mode and check we get a location request
-        let requests = &mut app
-            .update(Event::SwitchMode(Mode::Here), &mut model)
-            .into_effects()
-            .filter_map(Effect::into_location);
+        // switch to "here" mode and check we update the model and get a location request
+        let update = app.update(Event::SwitchMode(Mode::Here), &mut model);
+        assert_eq!(model.mode, Mode::Here);
+        let requests = &mut update.into_effects().filter_map(Effect::into_location);
 
         // get the first location request and check there are no more
         let mut request = requests.next().unwrap();
@@ -205,7 +206,7 @@ mod tests {
         // check the regional request has the expected url
         let actual = &request.operation;
         let expected = &HttpRequest::get(
-            "https://api.carbonintensity.org.uk/regional/intensity/2023-07-05T00:00Z/fw24h/postcode/KT1",
+            "https://api.carbonintensity.org.uk/regional/intensity/2023-07-06T20:30Z/fw24h/postcode/KT1",
         )
         .build();
         assert_eq!(actual, expected);

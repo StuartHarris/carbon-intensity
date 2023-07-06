@@ -1,6 +1,19 @@
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useEffect, useState } from "react";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Filler,
+  Legend,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
+import faker from "faker";
 
 import init_core, {
   process_event,
@@ -11,6 +24,50 @@ import * as types from "shared_types/types/shared_types";
 import * as bincode from "shared_types/bincode/mod";
 import { httpRequest } from "./httpRequest";
 import { locationRequest } from "./locationRequest";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Filler,
+  Legend
+);
+
+const zeroPad = (num: number, places: number) =>
+  String(num).padStart(places, "0");
+
+export const options = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: {
+    y: {
+      min: 0,
+      max: 600,
+      title: {
+        display: true,
+        text: "gCO2/kWh",
+      },
+    },
+    x: {
+      title: {
+        display: true,
+        text: "Time",
+      },
+    },
+  },
+  plugins: {
+    legend: {
+      position: "top" as const,
+    },
+    title: {
+      display: true,
+      text: "Carbon Intensity",
+    },
+  },
+};
 
 interface Event {
   kind: "event";
@@ -26,6 +83,16 @@ interface Response {
 type State = {
   outcode?: string;
   adminDistrict?: string;
+  data?: {
+    labels: string[];
+    datasets: {
+      fill: boolean;
+      label: string;
+      data: any[];
+      borderColor: string;
+      backgroundColor: string;
+    }[];
+  };
 };
 
 const initialState: State = {
@@ -76,12 +143,38 @@ const Home: NextPage = () => {
           let bytes = view();
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
-
-          // core asked for a re-render with new state
+          let data: any = undefined;
+          if (viewModel.window?.length > 0) {
+            const labels = viewModel.window.map((period) => {
+              const date = new Date(period.from);
+              return `${zeroPad(date.getHours(), 2)}:${zeroPad(
+                date.getMinutes(),
+                2
+              )}`;
+            });
+            data = {
+              labels,
+              datasets: [
+                {
+                  fill: true,
+                  label: "Forecast",
+                  data: viewModel.window.map(
+                    (period) => period.intensity.forecast
+                  ),
+                  borderColor: "rgb(53, 162, 235)",
+                  backgroundColor: "rgba(53, 162, 235, 0.5)",
+                  cubicInterpolationMode: "monotone",
+                  tension: 0.4,
+                },
+              ],
+            };
+          }
           setState({
             outcode: viewModel.outcode,
             adminDistrict: viewModel.admin_district,
+            data,
           });
+
           break;
         }
 
@@ -111,7 +204,9 @@ const Home: NextPage = () => {
       // Initial event
       dispatch({
         kind: "event",
-        event: new types.EventVariantSwitchMode(new types.ModeVariantHere()),
+        event: new types.EventVariantSwitchMode(
+          new types.ModeVariantNational()
+        ),
       });
     }
 
@@ -126,6 +221,23 @@ const Home: NextPage = () => {
 
       <main>
         <section className="box container has-text-centered m-5">
+          <div
+            style={{
+              height: "60vh",
+              position: "relative",
+              marginBottom: "1%",
+              padding: "1%",
+            }}
+          >
+            {state.data && (
+              <Line
+                options={options}
+                data={state.data}
+                height="200px"
+                width="200px"
+              />
+            )}
+          </div>
           <p className="is-size-4">
             {state.adminDistrict} ({state.outcode})
           </p>

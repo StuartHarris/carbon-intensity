@@ -11,8 +11,8 @@ pub struct Period {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Intensity {
-    pub forecast: isize,
-    pub actual: Option<isize>,
+    pub forecast: i32,
+    pub actual: Option<i32>,
     pub index: String,
 }
 

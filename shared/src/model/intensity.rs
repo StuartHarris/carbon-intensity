@@ -41,8 +41,8 @@ pub struct Period {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Intensity {
-    pub forecast: isize,
-    pub actual: Option<isize>,
+    pub forecast: i32,
+    pub actual: Option<i32>,
     pub index: String,
 }
 
