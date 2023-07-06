@@ -9,6 +9,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 pub use crux_core::{bridge::Bridge, Core, Request};
 
 pub use app::*;
+pub use model::Mode;
 
 // TODO hide this plumbing
 

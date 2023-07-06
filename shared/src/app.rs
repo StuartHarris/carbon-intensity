@@ -2,22 +2,15 @@ use crux_core::render::Render;
 use crux_http::Http;
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 use crate::{
     capabilities::location::{GetLocation, LocationResponse},
-    model::{intensity::Set, postcode, regional},
-    view_model,
+    model::{
+        intensity::{self, Set},
+        postcode, regional, Model,
+    },
+    view_model, Mode,
 };
-
-const INTENSITY_API: &str = "https://api.carbonintensity.org.uk";
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
-pub enum Mode {
-    #[default]
-    National,
-    Here,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Event {
@@ -30,13 +23,6 @@ pub enum Event {
     SetPostcode(crux_http::Result<crux_http::Response<postcode::PostcodeResponse>>),
     #[serde(skip)]
     SetRegional(crux_http::Result<crux_http::Response<regional::RegionalResponse>>),
-}
-
-#[derive(Default)]
-pub struct Model {
-    mode: Mode,
-    national: Set,
-    here: Set,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -82,14 +68,14 @@ impl crux_core::App for App {
             Event::SetLocation(LocationResponse { location: None }) => {}
             Event::SetPostcode(Ok(mut postcode)) => {
                 let postcode = postcode.take_body().unwrap();
-                let outcode = postcode.result[0].outcode.clone(); // TODO error handling
+                let postcode = postcode.result[0].clone();
+                let outcode = postcode.outcode; // TODO error handling
                 let from = "2023-07-05T00:00Z"; // TODO
-                let base = Url::parse(INTENSITY_API).unwrap();
-                let url = base
-                    .join(&format!(
-                        "/regional/intensity/{from}/fw24h/postcode/{outcode}"
-                    ))
-                    .unwrap();
+                let url = intensity::url(&from, &outcode);
+
+                model.outcode = Some(outcode);
+                model.admin_district = Some(postcode.admin_district.clone()); // TODO error handling
+
                 caps.http.get(url).expect_json().send(Event::SetRegional);
             }
             Event::SetPostcode(Err(_)) => {}
@@ -196,6 +182,13 @@ mod tests {
             .update(set_postcode_event, &mut model)
             .into_effects()
             .filter_map(Effect::into_http);
+
+        // check that the outcode and admin district have been set
+        assert_eq!(model.outcode, Some("KT1".to_string()));
+        assert_eq!(
+            model.admin_district,
+            Some("Kingston upon Thames".to_string())
+        );
 
         // get the first http request and check there are no more
         let mut request = requests.next().unwrap();

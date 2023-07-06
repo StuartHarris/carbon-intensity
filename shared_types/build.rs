@@ -1,5 +1,5 @@
 use crux_core::typegen::TypeGen;
-use shared::{app, App};
+use shared::{App, Mode};
 use std::path::PathBuf;
 
 fn main() {
@@ -10,7 +10,7 @@ fn main() {
     gen.register_app::<App>().expect("register");
 
     // we might be able to get rid of this if we use all variants of the enum
-    gen.register_type_with_samples(vec![app::Mode::National, app::Mode::Here])
+    gen.register_type_with_samples(vec![Mode::National, Mode::Here])
         .expect("register");
 
     let output_root = PathBuf::from("./generated");
