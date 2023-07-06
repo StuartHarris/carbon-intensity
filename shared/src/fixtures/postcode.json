@@ -1,0 +1,48 @@
+{
+  "status": 200,
+  "result": [
+    {
+      "postcode": "KT1 2UD",
+      "quality": 1,
+      "eastings": 518464,
+      "northings": 168488,
+      "country": "England",
+      "nhs_ha": "London",
+      "longitude": -0.298333,
+      "latitude": 51.40306,
+      "european_electoral_region": "London",
+      "primary_care_trust": "Kingston",
+      "region": "London",
+      "lsoa": "Kingston upon Thames 010C",
+      "msoa": "Kingston upon Thames 010",
+      "incode": "2UD",
+      "outcode": "KT1",
+      "parliamentary_constituency": "Kingston and Surbiton",
+      "admin_district": "Kingston upon Thames",
+      "parish": "Kingston upon Thames, unparished area",
+      "admin_county": null,
+      "date_of_introduction": "198001",
+      "admin_ward": "Kingston Town",
+      "ced": null,
+      "ccg": "NHS South West London",
+      "nuts": "Merton, Kingston upon Thames and Sutton",
+      "pfa": "Metropolitan Police",
+      "codes": {
+        "admin_district": "E09000021",
+        "admin_county": "E99999999",
+        "admin_ward": "E05013938",
+        "parish": "E43000211",
+        "parliamentary_constituency": "E14000770",
+        "ccg": "E38000245",
+        "ccg_id": "36L",
+        "ced": "E99999999",
+        "nuts": "TLI63",
+        "lsoa": "E01002966",
+        "msoa": "E02000607",
+        "lau2": "E09000021",
+        "pfa": "E23000001"
+      },
+      "distance": 34.11260909
+    }
+  ]
+}

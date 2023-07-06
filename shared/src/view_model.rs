@@ -1,12 +1,11 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::model::global;
+use crate::model::intensity;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Period {
-    pub from: DateTime<Utc>,
-    pub to: DateTime<Utc>,
+    pub from: String,
+    pub to: String,
     pub intensity: Intensity,
 }
 
@@ -17,18 +16,18 @@ pub struct Intensity {
     pub index: String,
 }
 
-impl From<global::Period> for Period {
-    fn from(value: global::Period) -> Self {
+impl From<intensity::Period> for Period {
+    fn from(value: intensity::Period) -> Self {
         Period {
-            from: value.from,
-            to: value.to,
+            from: value.from.to_rfc3339(),
+            to: value.to.to_rfc3339(),
             intensity: value.intensity.into(),
         }
     }
 }
 
-impl From<global::Intensity> for Intensity {
-    fn from(value: global::Intensity) -> Self {
+impl From<intensity::Intensity> for Intensity {
+    fn from(value: intensity::Intensity) -> Self {
         Intensity {
             forecast: value.forecast,
             actual: value.actual,
@@ -37,8 +36,8 @@ impl From<global::Intensity> for Intensity {
     }
 }
 
-impl From<global::Set> for Vec<Period> {
-    fn from(value: global::Set) -> Self {
+impl From<intensity::Set> for Vec<Period> {
+    fn from(value: intensity::Set) -> Self {
         value.all().into_iter().map(|p| p.into()).collect()
     }
 }

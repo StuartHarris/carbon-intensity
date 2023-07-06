@@ -1,0 +1,42 @@
+{
+  "data": {
+    "regionid": 14,
+    "dnoregion": "UKPN South East",
+    "shortname": "South East England",
+    "postcode": "KT1",
+    "data": [
+      {
+        "from": "2023-07-04T23:30Z",
+        "to": "2023-07-05T00:00Z",
+        "intensity": { "forecast": 121, "index": "moderate" },
+        "generationmix": [
+          { "fuel": "biomass", "perc": 0 },
+          { "fuel": "coal", "perc": 0 },
+          { "fuel": "imports", "perc": 66.1 },
+          { "fuel": "gas", "perc": 17.2 },
+          { "fuel": "nuclear", "perc": 0 },
+          { "fuel": "other", "perc": 0 },
+          { "fuel": "hydro", "perc": 0.2 },
+          { "fuel": "solar", "perc": 0 },
+          { "fuel": "wind", "perc": 16.5 }
+        ]
+      },
+      {
+        "from": "2023-07-05T00:00Z",
+        "to": "2023-07-05T00:30Z",
+        "intensity": { "forecast": 116, "index": "low" },
+        "generationmix": [
+          { "fuel": "biomass", "perc": 0 },
+          { "fuel": "coal", "perc": 0 },
+          { "fuel": "imports", "perc": 65.6 },
+          { "fuel": "gas", "perc": 16.1 },
+          { "fuel": "nuclear", "perc": 0 },
+          { "fuel": "other", "perc": 0 },
+          { "fuel": "hydro", "perc": 0.2 },
+          { "fuel": "solar", "perc": 0.1 },
+          { "fuel": "wind", "perc": 18 }
+        ]
+      }
+    ]
+  }
+}

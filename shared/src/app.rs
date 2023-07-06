@@ -6,29 +6,30 @@ use url::Url;
 
 use crate::{
     capabilities::location::{GetLocation, LocationResponse},
-    model::{global::Set, postcode, regional},
+    model::{intensity::Set, postcode, regional},
     view_model,
 };
 
-const POSTCODE_API: &str = "https://api.postcodes.io/postcodes";
-const INTENSITY_API: &str = "https://api.carbonintensity.org.uk/";
+const INTENSITY_API: &str = "https://api.carbonintensity.org.uk";
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub enum Mode {
     #[default]
     National,
     Here,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Event {
     SwitchMode(Mode),
 
     // events local to the core
     #[serde(skip)]
     SetLocation(LocationResponse),
-    SetPostcode(crux_http::Result<crux_http::Response<postcode::PostCode>>),
-    SetRegional(crux_http::Result<crux_http::Response<regional::Root>>),
+    #[serde(skip)]
+    SetPostcode(crux_http::Result<crux_http::Response<postcode::PostcodeResponse>>),
+    #[serde(skip)]
+    SetRegional(crux_http::Result<crux_http::Response<regional::RegionalResponse>>),
 }
 
 #[derive(Default)]
@@ -71,31 +72,35 @@ impl crux_core::App for App {
             Event::SetLocation(LocationResponse {
                 location: Some(location),
             }) => {
-                let url = Url::parse_with_params(
-                    POSTCODE_API,
-                    &[
-                        ("lon", location.longitude.to_string()),
-                        ("lat", location.latitude.to_string()),
-                    ],
-                )
-                .unwrap();
-                caps.http.get(url).expect_json().send(Event::SetPostcode);
+                caps.http
+                    .get(postcode::url())
+                    .query(&postcode::Query::from(location))
+                    .unwrap()
+                    .expect_json()
+                    .send(Event::SetPostcode);
             }
             Event::SetLocation(LocationResponse { location: None }) => {}
             Event::SetPostcode(Ok(mut postcode)) => {
                 let postcode = postcode.take_body().unwrap();
-                let url = &mut Url::parse(INTENSITY_API)
-                    .unwrap()
+                let outcode = postcode.result[0].outcode.clone(); // TODO error handling
+                let from = "2023-07-05T00:00Z"; // TODO
+                let base = Url::parse(INTENSITY_API).unwrap();
+                let url = base
                     .join(&format!(
-                        "regional/{from}/fw24h/postcode/{postcode}",
-                        from = "2023-07-05T00:00Z",
-                        postcode = postcode.outcode,
+                        "/regional/intensity/{from}/fw24h/postcode/{outcode}"
                     ))
                     .unwrap();
-                caps.http.get(&url).expect_json().send(Event::SetRegional);
+                caps.http.get(url).expect_json().send(Event::SetRegional);
             }
             Event::SetPostcode(Err(_)) => {}
-            Event::SetRegional(Ok(mut _regional)) => todo!(),
+            Event::SetRegional(Ok(mut regional)) => {
+                let regional = regional.take_body().unwrap();
+                let future = regional.data.data.clone();
+                model.here = Set {
+                    future,
+                    ..Default::default()
+                };
+            }
             Event::SetRegional(Err(_)) => {}
         };
 
@@ -109,5 +114,174 @@ impl crux_core::App for App {
                 Mode::Here => model.here.clone().into(),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{
+        location::Location, postcode::PostcodeResponse, regional::RegionalResponse,
+    };
+    use crux_core::testing::AppTester;
+    use crux_http::{
+        protocol::{HttpRequest, HttpResponse},
+        testing::ResponseBuilder,
+    };
+
+    #[test]
+    fn regional_happy_path() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        // switch to "here" mode and check we get a location request
+        let requests = &mut app
+            .update(Event::SwitchMode(Mode::Here), &mut model)
+            .into_effects()
+            .filter_map(Effect::into_location);
+
+        // get the first location request and check there are no more
+        let mut request = requests.next().unwrap();
+        assert!(requests.next().is_none());
+
+        // resolve a simulated location response
+        let response = LocationResponse {
+            location: Some(Location {
+                latitude: 51.403366,
+                longitude: -0.298302,
+            }),
+        };
+        let update = app.resolve(&mut request, response.clone()).unwrap();
+
+        // check the this raises a SetLocation event
+        let set_location_event = Event::SetLocation(response.clone());
+        let actual = &update.events;
+        let expected = &vec![set_location_event.clone()];
+        assert_eq!(actual, expected);
+
+        // check that the SetLocation event results in a postcode request
+        let requests = &mut app
+            .update(set_location_event, &mut model)
+            .into_effects()
+            .filter_map(Effect::into_http);
+
+        // get the first http request and check there are no more
+        let mut request = requests.next().unwrap();
+        assert!(requests.next().is_none());
+
+        // check the postcode request has the expected url
+        let actual = &request.operation;
+        let expected =
+            &HttpRequest::get("https://api.postcodes.io/postcodes?lat=51.403366&lon=-0.298302")
+                .build();
+        assert_eq!(actual, expected);
+
+        // resolve a simulated postcode response
+        let simulated_response: PostcodeResponse =
+            serde_json::from_str(include_str!("./fixtures/postcode.json")).unwrap();
+        let response = HttpResponse::status(200).json(&simulated_response).build();
+        let update = app.resolve(&mut request, response).unwrap();
+
+        // check the postcode response raises a SetPostcode event
+        let set_postcode_event = Event::SetPostcode(Ok(ResponseBuilder::ok()
+            .body(simulated_response)
+            .build()
+            .clone()));
+        let actual = &update.events;
+        let expected = &vec![set_postcode_event.clone()];
+        assert_eq!(actual, expected);
+
+        // check that the SetPostcode event results in a regional request
+        let requests = &mut app
+            .update(set_postcode_event, &mut model)
+            .into_effects()
+            .filter_map(Effect::into_http);
+
+        // get the first http request and check there are no more
+        let mut request = requests.next().unwrap();
+        assert!(requests.next().is_none());
+
+        // check the regional request has the expected url
+        let actual = &request.operation;
+        let expected = &HttpRequest::get(
+            "https://api.carbonintensity.org.uk/regional/intensity/2023-07-05T00:00Z/fw24h/postcode/KT1",
+        )
+        .build();
+        assert_eq!(actual, expected);
+
+        // resolve a simulated regional response
+        let simulated_response: RegionalResponse =
+            serde_json::from_str(include_str!("./fixtures/regional.json")).unwrap();
+        let response = HttpResponse::status(200).json(&simulated_response).build();
+        let update = app.resolve(&mut request, response).unwrap();
+
+        // check the regional response raises a SetRegional event
+        let set_regional_event = Event::SetRegional(Ok(ResponseBuilder::ok()
+            .body(simulated_response)
+            .build()
+            .clone()));
+        let actual = &update.events;
+        let expected = &vec![set_regional_event.clone()];
+        assert_eq!(actual, expected);
+
+        // check that the SetRegional event updates the model
+        for event in update.events {
+            app.update(event, &mut model);
+        }
+        insta::assert_yaml_snapshot!(model.here, @r###"
+        ---
+        past: []
+        future:
+          - from: "2023-07-04T23:30:00Z"
+            to: "2023-07-05T00:00:00Z"
+            intensity:
+              forecast: 121
+              actual: ~
+              index: moderate
+            generationmix:
+              - fuel: biomass
+                perc: 0
+              - fuel: coal
+                perc: 0
+              - fuel: imports
+                perc: 66.1
+              - fuel: gas
+                perc: 17.2
+              - fuel: nuclear
+                perc: 0
+              - fuel: other
+                perc: 0
+              - fuel: hydro
+                perc: 0.2
+              - fuel: solar
+                perc: 0
+              - fuel: wind
+                perc: 16.5
+          - from: "2023-07-05T00:00:00Z"
+            to: "2023-07-05T00:30:00Z"
+            intensity:
+              forecast: 116
+              actual: ~
+              index: low
+            generationmix:
+              - fuel: biomass
+                perc: 0
+              - fuel: coal
+                perc: 0
+              - fuel: imports
+                perc: 65.6
+              - fuel: gas
+                perc: 16.1
+              - fuel: nuclear
+                perc: 0
+              - fuel: other
+                perc: 0
+              - fuel: hydro
+                perc: 0.2
+              - fuel: solar
+                perc: 0.1
+              - fuel: wind
+                perc: 18
+        "###);
     }
 }

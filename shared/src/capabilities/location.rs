@@ -8,7 +8,7 @@ use crate::model::location::Location;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct LocationRequest;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct LocationResponse {
     pub location: Option<Location>,
 }
