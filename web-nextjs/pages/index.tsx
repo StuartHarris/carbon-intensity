@@ -9,60 +9,97 @@ import init_core, {
 } from "../shared/core";
 import * as types from "shared_types/types/shared_types";
 import * as bincode from "shared_types/bincode/mod";
+import { httpRequest } from "./httpRequest";
+import { locationRequest } from "./locationRequest";
 
 interface Event {
   kind: "event";
   event: types.Event;
 }
 
+interface Response {
+  kind: "response";
+  uuid: number[];
+  outcome: types.HttpResponse | types.LocationResponse;
+}
+
 type State = {
-  count: string;
+  outcode?: string;
+  adminDistrict?: string;
 };
 
 const initialState: State = {
-  count: "",
+  outcode: "",
+  adminDistrict: "",
 };
 
-function deserialize_effects(bytes: Uint8Array) {
+function deserializeRequests(bytes: Uint8Array) {
   let deserializer = new bincode.BincodeDeserializer(bytes);
 
   const len = deserializer.deserializeLen();
 
-  let effects: types.Request[] = [];
+  let requests: types.Request[] = [];
 
   for (let i = 0; i < len; i++) {
-    const effect = types.Request.deserialize(deserializer);
-    effects.push(effect);
+    const request = types.Request.deserialize(deserializer);
+    requests.push(request);
   }
 
-  return effects;
+  return requests;
 }
-
 const Home: NextPage = () => {
   const [state, setState] = useState(initialState);
 
   const dispatch = (action: Event) => {
     const serializer = new bincode.BincodeSerializer();
     action.event.serialize(serializer);
-    const effects = process_event(serializer.getBytes());
-    process_effects(effects);
+    const requests = process_event(serializer.getBytes());
+    handleRequests(requests);
   };
 
-  const process_effects = async (bytes: Uint8Array) => {
-    let effects = deserialize_effects(bytes);
+  const respond = (action: Response) => {
+    const serializer = new bincode.BincodeSerializer();
+    action.outcome.serialize(serializer);
+    const moreRequests = handle_response(
+      new Uint8Array(action.uuid),
+      serializer.getBytes()
+    );
+    handleRequests(moreRequests);
+  };
 
-    for (const { uuid: _, effect } of effects) {
+  const handleRequests = async (bytes: Uint8Array) => {
+    let requests = deserializeRequests(bytes);
+
+    for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
-        case types.EffectVariantRender:
+        case types.EffectVariantRender: {
           let bytes = view();
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
 
+          // core asked for a re-render with new state
           setState({
-            count: viewModel.count,
+            outcode: viewModel.outcode,
+            adminDistrict: viewModel.admin_district,
           });
-
           break;
+        }
+
+        case types.EffectVariantHttp: {
+          const request = (effect as types.EffectVariantHttp).value;
+          const outcome = await httpRequest(request);
+          respond({ kind: "response", uuid, outcome });
+          break;
+        }
+
+        case types.EffectVariantGetLocation: {
+          const request = (effect as types.EffectVariantGetLocation).value;
+          const outcome = await locationRequest(request);
+          respond({ kind: "response", uuid, outcome });
+          break;
+        }
+
+        default:
       }
     }
   };
@@ -74,7 +111,7 @@ const Home: NextPage = () => {
       // Initial event
       dispatch({
         kind: "event",
-        event: new types.EventVariantReset(),
+        event: new types.EventVariantSwitchMode(new types.ModeVariantHere()),
       });
     }
 
@@ -84,45 +121,40 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <title>Next.js Counter</title>
+        <title>Next.js Carbon Intensity</title>
       </Head>
 
       <main>
         <section className="box container has-text-centered m-5">
-          <p className="is-size-5">{state.count}</p>
+          <p className="is-size-4">
+            {state.adminDistrict} ({state.outcode})
+          </p>
           <div className="buttons section is-centered">
             <button
-              className="button is-primary is-danger"
+              className="button is-primary is-success"
               onClick={() =>
                 dispatch({
                   kind: "event",
-                  event: new types.EventVariantReset(),
+                  event: new types.EventVariantSwitchMode(
+                    new types.ModeVariantNational()
+                  ),
                 })
               }
             >
-              {"Reset"}
+              {"National"}
             </button>
             <button
               className="button is-primary is-success"
               onClick={() =>
                 dispatch({
                   kind: "event",
-                  event: new types.EventVariantIncrement(),
+                  event: new types.EventVariantSwitchMode(
+                    new types.ModeVariantHere()
+                  ),
                 })
               }
             >
-              {"Increment"}
-            </button>
-            <button
-              className="button is-primary is-warning"
-              onClick={() =>
-                dispatch({
-                  kind: "event",
-                  event: new types.EventVariantDecrement(),
-                })
-              }
-            >
-              {"Decrement"}
+              {"Here"}
             </button>
           </div>
         </section>

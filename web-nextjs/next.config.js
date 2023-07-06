@@ -6,7 +6,7 @@ let loaded = false;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false,
   webpack(nextConfig) {
     if (!loaded) {
       nextConfig.plugins.push(
@@ -20,6 +20,24 @@ const nextConfig = {
     }
 
     return nextConfig;
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self' 'unsafe-inline' 'unsafe-eval' api.postcodes.io api.carbonintensity.org.uk cdn.jsdelivr.net",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+    ];
   },
 };
 

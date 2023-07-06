@@ -27,6 +27,9 @@ pub enum Event {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ViewModel {
+    pub mode: Mode,
+    pub outcode: Option<String>,
+    pub admin_district: Option<String>,
     pub window: Vec<view_model::Period>,
 }
 
@@ -77,6 +80,7 @@ impl crux_core::App for App {
                 model.admin_district = Some(postcode.admin_district.clone()); // TODO error handling
 
                 caps.http.get(url).expect_json().send(Event::SetRegional);
+                caps.render.render();
             }
             Event::SetPostcode(Err(_)) => {}
             Event::SetRegional(Ok(mut regional)) => {
@@ -86,6 +90,8 @@ impl crux_core::App for App {
                     future,
                     ..Default::default()
                 };
+
+                caps.render.render();
             }
             Event::SetRegional(Err(_)) => {}
         };
@@ -99,6 +105,9 @@ impl crux_core::App for App {
                 Mode::National => model.national.clone().into(),
                 Mode::Here => model.here.clone().into(),
             },
+            mode: model.mode.clone(),
+            outcode: model.outcode.clone(),
+            admin_district: model.admin_district.clone(),
         }
     }
 }
@@ -109,7 +118,7 @@ mod tests {
     use crate::model::{
         location::Location, postcode::PostcodeResponse, regional::RegionalResponse,
     };
-    use crux_core::testing::AppTester;
+    use crux_core::{assert_effect, testing::AppTester};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
         testing::ResponseBuilder,
@@ -177,11 +186,10 @@ mod tests {
         let expected = &vec![set_postcode_event.clone()];
         assert_eq!(actual, expected);
 
-        // check that the SetPostcode event results in a regional request
-        let requests = &mut app
-            .update(set_postcode_event, &mut model)
-            .into_effects()
-            .filter_map(Effect::into_http);
+        // check that the SetPostcode event results in a render extract a regional request
+        let update = app.update(set_postcode_event, &mut model);
+        assert_effect!(&update, Effect::Render(_));
+        let requests = &mut update.into_effects().filter_map(Effect::into_http);
 
         // check that the outcode and admin district have been set
         assert_eq!(model.outcode, Some("KT1".to_string()));
@@ -217,9 +225,10 @@ mod tests {
         let expected = &vec![set_regional_event.clone()];
         assert_eq!(actual, expected);
 
-        // check that the SetRegional event updates the model
+        // check that the SetRegional event updates the model and renders
         for event in update.events {
-            app.update(event, &mut model);
+            let update = app.update(event, &mut model);
+            assert_effect!(update, Effect::Render(_));
         }
         insta::assert_yaml_snapshot!(model.here, @r###"
         ---
