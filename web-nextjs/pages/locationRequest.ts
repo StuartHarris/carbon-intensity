@@ -1,7 +1,7 @@
 import {
   LocationRequest,
   LocationResponse,
-  Location,
+  Coordinate,
 } from "shared_types/types/shared_types";
 
 export async function locationRequest(
@@ -12,14 +12,17 @@ export async function locationRequest(
   return locationResponse;
 }
 
-function getLocation(): Promise<Location> {
+function getLocation(): Promise<Coordinate> {
   return new Promise((resolve, reject) => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position: GeolocationPosition) => {
           if (position) {
             resolve(
-              new Location(position.coords.latitude, position.coords.longitude)
+              new Coordinate(
+                position.coords.latitude,
+                position.coords.longitude
+              )
             );
           } else {
             reject(GeolocationPositionError.POSITION_UNAVAILABLE);

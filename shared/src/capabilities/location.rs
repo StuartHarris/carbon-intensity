@@ -3,14 +3,14 @@ use serde::{Deserialize, Serialize};
 
 use crux_core::capability::{CapabilityContext, Operation};
 
-use crate::model::location::Location;
+use crate::model::location::Coordinate;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct LocationRequest;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct LocationResponse {
-    pub location: Option<Location>,
+    pub location: Option<Coordinate>,
 }
 
 impl Operation for LocationRequest {

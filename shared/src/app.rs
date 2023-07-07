@@ -9,7 +9,10 @@ use crate::{
         location::{GetLocation, LocationResponse},
         time::{Time, TimeResponse},
     },
-    model::{location::Location, national, postcode, regional, CurrentQuery, Model},
+    model::{
+        location::{Coordinate, Location},
+        national, postcode, regional, CurrentQuery, Model,
+    },
     view_model::{self, ViewModel},
 };
 
@@ -103,10 +106,12 @@ impl crux_core::App for App {
                 let url = regional::url(&model.time, &outcode);
 
                 model.local.scope.location = Some(Location {
-                    latitude: postcode.latitude,
-                    longitude: postcode.longitude,
-                    outcode: Some(outcode),
-                    admin_district: Some(postcode.admin_district.clone()),
+                    coordinate: Coordinate {
+                        latitude: postcode.latitude,
+                        longitude: postcode.longitude,
+                    },
+                    outcode,
+                    admin_district: postcode.admin_district.clone(),
                 });
 
                 caps.http.get(url).expect_json().send(Event::SetRegional);
@@ -143,16 +148,11 @@ impl crux_core::App for App {
                 .into_iter()
                 .map(view_model::DataPoint::from)
                 .collect(),
-            local_name: if location.is_some() && location.clone().unwrap().outcode.is_some() {
+            local_name: if location.is_some() {
                 format!(
                     "{area}, {code}",
-                    area = location
-                        .clone()
-                        .unwrap()
-                        .admin_district
-                        .clone()
-                        .unwrap_or_default(),
-                    code = location.unwrap().outcode.clone().unwrap_or_default(),
+                    area = location.clone().unwrap().admin_district,
+                    code = location.unwrap().outcode,
                 )
             } else {
                 "Local".to_string()
@@ -217,11 +217,9 @@ mod tests {
         // resolve the location request with a simulated location response
         let mut request = requests.next().unwrap();
         let response = LocationResponse {
-            location: Some(Location {
+            location: Some(Coordinate {
                 latitude: 51.403366,
                 longitude: -0.298302,
-                outcode: None,
-                admin_district: None,
             }),
         };
         let update = app.resolve(&mut request, response.clone()).unwrap();
@@ -273,10 +271,12 @@ mod tests {
         assert_eq!(
             model.local.scope.location.clone().unwrap(),
             Location {
-                latitude: 51.40306,
-                longitude: -0.298333,
-                outcode: Some("KT1".to_string()),
-                admin_district: Some("Kingston upon Thames".to_string()),
+                coordinate: Coordinate {
+                    latitude: 51.40306,
+                    longitude: -0.298333,
+                },
+                outcode: "KT1".to_string(),
+                admin_district: "Kingston upon Thames".to_string(),
             }
         );
 
@@ -316,8 +316,9 @@ mod tests {
         ---
         scope:
           location:
-            latitude: 51.40306
-            longitude: -0.298333
+            coordinate:
+              latitude: 51.40306
+              longitude: -0.298333
             outcode: KT1
             admin_district: Kingston upon Thames
         periods:

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use super::location::Location;
+use super::location::Coordinate;
 
 pub const BASE_URL: &str = "https://api.postcodes.io";
 
@@ -18,11 +18,11 @@ pub struct Query {
     pub lon: f64,
 }
 
-impl From<Location> for Query {
-    fn from(location: Location) -> Self {
+impl From<Coordinate> for Query {
+    fn from(coord: Coordinate) -> Self {
         Self {
-            lat: location.latitude,
-            lon: location.longitude,
+            lat: coord.latitude,
+            lon: coord.longitude,
         }
     }
 }
