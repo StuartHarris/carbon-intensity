@@ -31,4 +31,5 @@ uniffi = { version = "0.24.1", features = ["build"] }
 
 [dev-dependencies]
 assert_let_bind = "0.1.1"
+assert_matches = "1.5.0"
 insta = { version = "1.30.0", features = ["yaml"] }

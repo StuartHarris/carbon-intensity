@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use self::intensity::Period;
+use self::{intensity::Period, location::Location};
 
 pub mod factors;
 pub mod global;
@@ -11,21 +11,44 @@ pub mod national;
 pub mod postcode;
 pub mod regional;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[derive(Serialize, Default, Deserialize, Clone, Debug, PartialEq)]
 pub enum Scope {
+    #[default]
+    None,
+    National(National),
+    Local(Local),
+}
+
+pub trait DataSet {}
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
+pub struct National;
+impl DataSet for National {}
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
+pub struct Local {
+    pub location: Option<Location>,
+}
+impl DataSet for Local {}
+
+#[derive(Default, Serialize)]
+pub struct Data<T: DataSet + Serialize> {
+    pub scope: T,
+    pub periods: Vec<Period>,
+    pub last_updated: DateTime<Utc>,
+}
+
+#[derive(Default, Serialize, PartialEq, Eq, Debug, Clone, Copy)]
+pub enum CurrentQuery {
     #[default]
     National,
     Local,
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct Model {
-    pub scope: Scope,
     pub time: DateTime<Utc>,
-    pub outcode: Option<String>,
-    pub admin_district: Option<String>,
-    pub national: Vec<Period>,
-    pub national_updated: DateTime<Utc>,
-    pub local: Vec<Period>,
-    pub local_updated: DateTime<Utc>,
+    pub current_query: CurrentQuery, // note this is problematic and really should be some sort of context
+    pub national: Data<National>,
+    pub local: Data<Local>,
 }

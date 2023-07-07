@@ -4,4 +4,6 @@ use serde::{Deserialize, Serialize};
 pub struct Location {
     pub latitude: f64,
     pub longitude: f64,
+    pub outcode: Option<String>,
+    pub admin_district: Option<String>,
 }

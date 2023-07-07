@@ -211,9 +211,7 @@ const Home: NextPage = () => {
       // Initial event
       dispatch({
         kind: "event",
-        event: new types.EventVariantGetIntensityData(
-          new types.ScopeVariantNational()
-        ),
+        event: new types.EventVariantGetNational(),
       });
     }
 
@@ -251,9 +249,7 @@ const Home: NextPage = () => {
               onClick={() =>
                 dispatch({
                   kind: "event",
-                  event: new types.EventVariantGetIntensityData(
-                    new types.ScopeVariantNational()
-                  ),
+                  event: new types.EventVariantGetNational(),
                 })
               }
             >
@@ -264,9 +260,7 @@ const Home: NextPage = () => {
               onClick={() =>
                 dispatch({
                   kind: "event",
-                  event: new types.EventVariantGetIntensityData(
-                    new types.ScopeVariantLocal()
-                  ),
+                  event: new types.EventVariantGetLocal(),
                 })
               }
             >

@@ -1,5 +1,5 @@
 use crux_core::typegen::TypeGen;
-use shared::{view_model::Category, App, Scope};
+use shared::{view_model::Category, App};
 use std::path::PathBuf;
 
 fn main() {
@@ -10,8 +10,6 @@ fn main() {
     gen.register_app::<App>().expect("register");
 
     // we might be able to get rid of this if we use all variants of the enum
-    gen.register_type_with_samples(vec![Scope::National, Scope::Local])
-        .expect("register");
     gen.register_type_with_samples(vec![
         Category::Total,
         Category::Gas,

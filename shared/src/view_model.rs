@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{model::intensity, Scope};
+use crate::model::intensity;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ViewModel {
-    pub scope: Scope,
     pub national_name: String,
     pub national: Vec<DataPoint>,
     pub local_name: String,

@@ -9,14 +9,14 @@ use crate::{
         location::{GetLocation, LocationResponse},
         time::{Time, TimeResponse},
     },
-    model::{national, postcode, regional, Model},
+    model::{location::Location, national, postcode, regional, CurrentQuery, Model},
     view_model::{self, ViewModel},
-    Scope,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Event {
-    GetIntensityData(Scope),
+    GetNational,
+    GetLocal,
 
     // events local to the core
     CurrentTime(TimeResponse),
@@ -50,18 +50,18 @@ impl crux_core::App for App {
 
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
-            Event::GetIntensityData(Scope::National) => {
-                model.scope = Scope::National;
+            Event::GetNational => {
+                model.current_query = CurrentQuery::National;
                 caps.time.get(Event::CurrentTime);
             }
-            Event::GetIntensityData(Scope::Local) => {
-                model.scope = Scope::Local;
+            Event::GetLocal => {
+                model.current_query = CurrentQuery::Local;
                 caps.time.get(Event::CurrentTime);
             }
             Event::CurrentTime(TimeResponse(iso_time)) => {
-                let last_updated = match model.scope {
-                    Scope::National => model.national_updated,
-                    Scope::Local => model.local_updated,
+                let last_updated = match model.current_query {
+                    CurrentQuery::National => model.national.last_updated,
+                    CurrentQuery::Local => model.local.last_updated,
                 };
                 let current_time = DateTime::parse_from_rfc3339(&iso_time)
                     .unwrap()
@@ -69,14 +69,14 @@ impl crux_core::App for App {
                 model.time = current_time;
 
                 if current_time - last_updated > Duration::minutes(30) {
-                    match model.scope {
-                        Scope::National => {
+                    match model.current_query {
+                        CurrentQuery::National => {
                             caps.http
                                 .get(national::url(&model.time))
                                 .expect_json()
                                 .send(Event::SetNational);
                         }
-                        Scope::Local => {
+                        CurrentQuery::Local => {
                             caps.location.get(Event::SetLocation);
                         }
                     }
@@ -102,8 +102,12 @@ impl crux_core::App for App {
                 let outcode = postcode.outcode;
                 let url = regional::url(&model.time, &outcode);
 
-                model.outcode = Some(outcode);
-                model.admin_district = Some(postcode.admin_district.clone());
+                model.local.scope.location = Some(Location {
+                    latitude: postcode.latitude,
+                    longitude: postcode.longitude,
+                    outcode: Some(outcode),
+                    admin_district: Some(postcode.admin_district.clone()),
+                });
 
                 caps.http.get(url).expect_json().send(Event::SetRegional);
                 caps.render.render();
@@ -111,16 +115,16 @@ impl crux_core::App for App {
             Event::SetPostcode(Err(_)) => {}
             Event::SetRegional(Ok(mut response)) => {
                 let regional = response.take_body().unwrap();
-                model.local = regional.data.data.clone();
-                model.local_updated = model.time;
+                model.local.periods = regional.data.data.clone();
+                model.local.last_updated = model.time;
 
                 caps.render.render();
             }
             Event::SetRegional(Err(_)) => {}
             Event::SetNational(Ok(mut response)) => {
                 let national = response.take_body().unwrap();
-                model.national = national.data.clone();
-                model.national_updated = model.time;
+                model.national.periods = national.data.clone();
+                model.national.last_updated = model.time;
 
                 caps.render.render();
             }
@@ -129,26 +133,33 @@ impl crux_core::App for App {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        let location = model.local.scope.location.clone();
         ViewModel {
-            scope: model.scope.clone(),
             national_name: "UK".to_string(),
             national: model
                 .national
+                .periods
                 .clone()
                 .into_iter()
                 .map(view_model::DataPoint::from)
                 .collect(),
-            local_name: if model.outcode.is_some() {
+            local_name: if location.is_some() && location.clone().unwrap().outcode.is_some() {
                 format!(
                     "{area}, {code}",
-                    area = model.admin_district.clone().unwrap_or_default(),
-                    code = model.outcode.clone().unwrap_or_default(),
+                    area = location
+                        .clone()
+                        .unwrap()
+                        .admin_district
+                        .clone()
+                        .unwrap_or_default(),
+                    code = location.unwrap().outcode.clone().unwrap_or_default(),
                 )
             } else {
                 "Local".to_string()
             },
             local: model
                 .local
+                .periods
                 .clone()
                 .into_iter()
                 .map(view_model::DataPoint::from)
@@ -163,8 +174,9 @@ mod tests {
     use super::*;
     use crate::model::{
         location::Location, national::NationalResponse, postcode::PostcodeResponse,
-        regional::RegionalResponse,
+        regional::RegionalResponse, CurrentQuery,
     };
+    use assert_matches::assert_matches;
     use crux_core::{assert_effect, testing::AppTester};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
@@ -177,8 +189,8 @@ mod tests {
         let mut model = Model::default();
 
         // request "local" data and check we update the model and get a time request
-        let update = app.update(Event::GetIntensityData(Scope::Local), &mut model);
-        assert_eq!(model.scope, Scope::Local);
+        let update = app.update(Event::GetLocal, &mut model);
+        assert_eq!(model.current_query, CurrentQuery::Local);
         let requests = &mut update.into_effects().filter_map(Effect::into_time);
 
         // resolve the time request with a simulated time response
@@ -208,6 +220,8 @@ mod tests {
             location: Some(Location {
                 latitude: 51.403366,
                 longitude: -0.298302,
+                outcode: None,
+                admin_district: None,
             }),
         };
         let update = app.resolve(&mut request, response.clone()).unwrap();
@@ -256,10 +270,14 @@ mod tests {
         let requests = &mut update.into_effects().filter_map(Effect::into_http);
 
         // check that the outcode and admin district have been set
-        assert_eq!(model.outcode, Some("KT1".to_string()));
         assert_eq!(
-            model.admin_district,
-            Some("Kingston upon Thames".to_string())
+            model.local.scope.location.clone().unwrap(),
+            Location {
+                latitude: 51.40306,
+                longitude: -0.298333,
+                outcode: Some("KT1".to_string()),
+                admin_district: Some("Kingston upon Thames".to_string()),
+            }
         );
 
         // get the first http request and check there are no more
@@ -296,56 +314,79 @@ mod tests {
         }
         insta::assert_yaml_snapshot!(model.local, @r###"
         ---
-        - from: "2023-07-04T23:30:00Z"
-          to: "2023-07-05T00:00:00Z"
-          intensity:
+        scope:
+          location:
+            latitude: 51.40306
+            longitude: -0.298333
+            outcode: KT1
+            admin_district: Kingston upon Thames
+        periods:
+          - from: "2023-07-04T23:30:00Z"
+            to: "2023-07-05T00:00:00Z"
+            intensity:
+              forecast: 121
+              actual: ~
+              index: moderate
+            generationmix:
+              - fuel: biomass
+                perc: 0
+              - fuel: coal
+                perc: 0
+              - fuel: imports
+                perc: 66.1
+              - fuel: gas
+                perc: 17.2
+              - fuel: nuclear
+                perc: 0
+              - fuel: other
+                perc: 0
+              - fuel: hydro
+                perc: 0.2
+              - fuel: solar
+                perc: 0
+              - fuel: wind
+                perc: 16.5
+          - from: "2023-07-05T00:00:00Z"
+            to: "2023-07-05T00:30:00Z"
+            intensity:
+              forecast: 116
+              actual: ~
+              index: low
+            generationmix:
+              - fuel: biomass
+                perc: 0
+              - fuel: coal
+                perc: 0
+              - fuel: imports
+                perc: 65.6
+              - fuel: gas
+                perc: 16.1
+              - fuel: nuclear
+                perc: 0
+              - fuel: other
+                perc: 0
+              - fuel: hydro
+                perc: 0.2
+              - fuel: solar
+                perc: 0.1
+              - fuel: wind
+                perc: 18
+        last_updated: "2023-07-06T20:30:00Z"
+        "###);
+        insta::assert_yaml_snapshot!(app.view(&model), @r###"
+        ---
+        national_name: UK
+        national: []
+        local_name: "Kingston upon Thames, KT1"
+        local:
+          - date: "2023-07-04T23:30:00+00:00"
             forecast: 121
             actual: ~
-            index: moderate
-          generationmix:
-            - fuel: biomass
-              perc: 0
-            - fuel: coal
-              perc: 0
-            - fuel: imports
-              perc: 66.1
-            - fuel: gas
-              perc: 17.2
-            - fuel: nuclear
-              perc: 0
-            - fuel: other
-              perc: 0
-            - fuel: hydro
-              perc: 0.2
-            - fuel: solar
-              perc: 0
-            - fuel: wind
-              perc: 16.5
-        - from: "2023-07-05T00:00:00Z"
-          to: "2023-07-05T00:30:00Z"
-          intensity:
+            category: Total
+          - date: "2023-07-05T00:00:00+00:00"
             forecast: 116
             actual: ~
-            index: low
-          generationmix:
-            - fuel: biomass
-              perc: 0
-            - fuel: coal
-              perc: 0
-            - fuel: imports
-              perc: 65.6
-            - fuel: gas
-              perc: 16.1
-            - fuel: nuclear
-              perc: 0
-            - fuel: other
-              perc: 0
-            - fuel: hydro
-              perc: 0.2
-            - fuel: solar
-              perc: 0.1
-            - fuel: wind
-              perc: 18
+            category: Total
         "###);
     }
 
@@ -355,8 +396,8 @@ mod tests {
         let mut model = Model::default();
 
         // request "national" data and check we update the model and get a time request
-        let update = app.update(Event::GetIntensityData(Scope::National), &mut model);
-        assert_eq!(model.scope, Scope::National);
+        let update = app.update(Event::GetNational, &mut model);
+        assert_matches!(model.current_query, CurrentQuery::National);
         let requests = &mut update.into_effects().filter_map(Effect::into_time);
 
         // resolve the time request with a simulated time response
@@ -414,20 +455,38 @@ mod tests {
         }
         insta::assert_yaml_snapshot!(model.national, @r###"
         ---
-        - from: "2023-07-04T23:30:00Z"
-          to: "2023-07-05T00:00:00Z"
-          intensity:
+        scope: ~
+        periods:
+          - from: "2023-07-04T23:30:00Z"
+            to: "2023-07-05T00:00:00Z"
+            intensity:
+              forecast: 142
+              actual: 129
+              index: moderate
+            generationmix: ~
+          - from: "2023-07-05T00:00:00Z"
+            to: "2023-07-05T00:30:00Z"
+            intensity:
+              forecast: 136
+              actual: 122
+              index: moderate
+            generationmix: ~
+        last_updated: "2023-07-06T20:30:00Z"
+        "###);
+        insta::assert_yaml_snapshot!(app.view(&model), @r###"
+        ---
+        national_name: UK
+        national:
+          - date: "2023-07-04T23:30:00+00:00"
             forecast: 142
             actual: 129
-            index: moderate
-          generationmix: ~
-        - from: "2023-07-05T00:00:00Z"
-          to: "2023-07-05T00:30:00Z"
-          intensity:
+            category: Total
+          - date: "2023-07-05T00:00:00+00:00"
             forecast: 136
             actual: 122
-            index: moderate
-          generationmix: ~
+            category: Total
+        local_name: Local
+        local: []
         "###);
     }
 
@@ -435,12 +494,12 @@ mod tests {
     fn do_not_get_local_if_less_than_30_mins_has_elapsed() {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
-        model.local_updated = DateTime::parse_from_rfc3339("2023-07-06T20:30:00Z")
+        model.local.last_updated = DateTime::parse_from_rfc3339("2023-07-06T20:30:00Z")
             .unwrap()
             .with_timezone(&Utc);
 
         // request "local" data and get a time request
-        let update = app.update(Event::GetIntensityData(Scope::Local), &mut model);
+        let update = app.update(Event::GetLocal, &mut model);
         let mut request = &mut update.into_effects().find_map(Effect::into_time).unwrap();
 
         // resolve the time request with a simulated time response
@@ -459,12 +518,12 @@ mod tests {
     fn get_national_if_more_than_30_mins_has_elapsed() {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
-        model.national_updated = DateTime::parse_from_rfc3339("2023-07-06T20:30:00Z")
+        model.national.last_updated = DateTime::parse_from_rfc3339("2023-07-06T20:30:00Z")
             .unwrap()
             .with_timezone(&Utc);
 
         // request "national" data and get a time request
-        let update = app.update(Event::GetIntensityData(Scope::National), &mut model);
+        let update = app.update(Event::GetNational, &mut model);
         let mut request = &mut update.into_effects().find_map(Effect::into_time).unwrap();
 
         // resolve the time request with a simulated time response
