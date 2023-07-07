@@ -1,6 +1,34 @@
 use serde::{Deserialize, Serialize};
 
-use crate::model::intensity;
+use crate::{model::intensity, Scope};
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ViewModel {
+    pub scope: Scope,
+    pub national_name: String,
+    pub national: Vec<DataPoint>,
+    pub local_name: String,
+    pub local: Vec<DataPoint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataPoint {
+    pub date: String,
+    pub forecast: i32,
+    pub actual: Option<i32>,
+    pub category: Category,
+}
+
+impl From<intensity::Period> for DataPoint {
+    fn from(value: intensity::Period) -> Self {
+        DataPoint {
+            date: value.from.to_rfc3339(),
+            forecast: value.intensity.forecast,
+            actual: value.intensity.actual,
+            category: Category::Total,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Category {
@@ -14,45 +42,4 @@ pub enum Category {
     Other,
     Wind,
     Solar,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DataPoint {
-    pub date: String,
-    pub intensity: i32,
-    pub category: Category,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Period {
-    pub from: String,
-    pub to: String,
-    pub intensity: Intensity,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Intensity {
-    pub forecast: i32,
-    pub actual: Option<i32>,
-    pub index: String,
-}
-
-impl From<intensity::Period> for Period {
-    fn from(value: intensity::Period) -> Self {
-        Period {
-            from: value.from.to_rfc3339(),
-            to: value.to.to_rfc3339(),
-            intensity: value.intensity.into(),
-        }
-    }
-}
-
-impl From<intensity::Intensity> for Intensity {
-    fn from(value: intensity::Intensity) -> Self {
-        Intensity {
-            forecast: value.forecast,
-            actual: value.actual,
-            index: value.index,
-        }
-    }
 }

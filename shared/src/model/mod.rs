@@ -12,7 +12,7 @@ pub mod postcode;
 pub mod regional;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
-pub enum Mode {
+pub enum Scope {
     #[default]
     National,
     Local,
@@ -20,7 +20,7 @@ pub enum Mode {
 
 #[derive(Default)]
 pub struct Model {
-    pub mode: Mode,
+    pub scope: Scope,
     pub time: DateTime<Utc>,
     pub outcode: Option<String>,
     pub admin_district: Option<String>,

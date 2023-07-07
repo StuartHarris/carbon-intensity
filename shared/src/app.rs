@@ -10,12 +10,13 @@ use crate::{
         time::{Time, TimeResponse},
     },
     model::{national, postcode, regional, Model},
-    view_model, Mode,
+    view_model::{self, ViewModel},
+    Scope,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Event {
-    SwitchMode(Mode),
+    GetIntensityData(Scope),
 
     // events local to the core
     CurrentTime(TimeResponse),
@@ -27,15 +28,6 @@ pub enum Event {
     SetRegional(crux_http::Result<crux_http::Response<regional::RegionalResponse>>),
     #[serde(skip)]
     SetNational(crux_http::Result<crux_http::Response<national::NationalResponse>>),
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ViewModel {
-    pub mode: Mode,
-    pub location: String,
-    pub national: Vec<view_model::Period>,
-    pub local: Vec<view_model::Period>,
-    // pub points: Vec<view_model::DataPoint>,
 }
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
@@ -58,18 +50,18 @@ impl crux_core::App for App {
 
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
-            Event::SwitchMode(Mode::National) => {
-                model.mode = Mode::National;
+            Event::GetIntensityData(Scope::National) => {
+                model.scope = Scope::National;
                 caps.time.get(Event::CurrentTime);
             }
-            Event::SwitchMode(Mode::Local) => {
-                model.mode = Mode::Local;
+            Event::GetIntensityData(Scope::Local) => {
+                model.scope = Scope::Local;
                 caps.time.get(Event::CurrentTime);
             }
             Event::CurrentTime(TimeResponse(iso_time)) => {
-                let last_updated = match model.mode {
-                    Mode::National => model.national_updated,
-                    Mode::Local => model.local_updated,
+                let last_updated = match model.scope {
+                    Scope::National => model.national_updated,
+                    Scope::Local => model.local_updated,
                 };
                 let current_time = DateTime::parse_from_rfc3339(&iso_time)
                     .unwrap()
@@ -77,14 +69,14 @@ impl crux_core::App for App {
                 model.time = current_time;
 
                 if current_time - last_updated > Duration::minutes(30) {
-                    match model.mode {
-                        Mode::National => {
+                    match model.scope {
+                        Scope::National => {
                             caps.http
                                 .get(national::url(&model.time))
                                 .expect_json()
                                 .send(Event::SetNational);
                         }
-                        Mode::Local => {
+                        Scope::Local => {
                             caps.location.get(Event::SetLocation);
                         }
                     }
@@ -138,27 +130,29 @@ impl crux_core::App for App {
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         ViewModel {
+            scope: model.scope.clone(),
+            national_name: "UK".to_string(),
             national: model
                 .national
                 .clone()
                 .into_iter()
-                .map(view_model::Period::from)
+                .map(view_model::DataPoint::from)
                 .collect(),
+            local_name: if model.outcode.is_some() {
+                format!(
+                    "{area}, {code}",
+                    area = model.admin_district.clone().unwrap_or_default(),
+                    code = model.outcode.clone().unwrap_or_default(),
+                )
+            } else {
+                "Local".to_string()
+            },
             local: model
                 .local
                 .clone()
                 .into_iter()
-                .map(view_model::Period::from)
+                .map(view_model::DataPoint::from)
                 .collect(),
-            mode: model.mode.clone(),
-            location: match model.mode {
-                Mode::National => "UK".to_string(),
-                Mode::Local => format!(
-                    "{}, {}",
-                    model.outcode.clone().unwrap_or_default(),
-                    model.admin_district.clone().unwrap_or_default()
-                ),
-            },
             // points: Default::default(),
         }
     }
@@ -182,9 +176,9 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        // switch to "local" mode and check we update the model and get a time request
-        let update = app.update(Event::SwitchMode(Mode::Local), &mut model);
-        assert_eq!(model.mode, Mode::Local);
+        // request "local" data and check we update the model and get a time request
+        let update = app.update(Event::GetIntensityData(Scope::Local), &mut model);
+        assert_eq!(model.scope, Scope::Local);
         let requests = &mut update.into_effects().filter_map(Effect::into_time);
 
         // resolve the time request with a simulated time response
@@ -360,9 +354,9 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        // switch to "national" mode and check we update the model and get a time request
-        let update = app.update(Event::SwitchMode(Mode::National), &mut model);
-        assert_eq!(model.mode, Mode::National);
+        // request "national" data and check we update the model and get a time request
+        let update = app.update(Event::GetIntensityData(Scope::National), &mut model);
+        assert_eq!(model.scope, Scope::National);
         let requests = &mut update.into_effects().filter_map(Effect::into_time);
 
         // resolve the time request with a simulated time response
@@ -445,8 +439,8 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
 
-        // switch to "local" mode and get a time request
-        let update = app.update(Event::SwitchMode(Mode::Local), &mut model);
+        // request "local" data and get a time request
+        let update = app.update(Event::GetIntensityData(Scope::Local), &mut model);
         let mut request = &mut update.into_effects().find_map(Effect::into_time).unwrap();
 
         // resolve the time request with a simulated time response
@@ -469,8 +463,8 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
 
-        // switch to "national" mode and get a time request
-        let update = app.update(Event::SwitchMode(Mode::National), &mut model);
+        // request "national" data and get a time request
+        let update = app.update(Event::GetIntensityData(Scope::National), &mut model);
         let mut request = &mut update.into_effects().find_map(Effect::into_time).unwrap();
 
         // resolve the time request with a simulated time response

@@ -80,22 +80,12 @@ interface Response {
 }
 
 type State = {
-  location?: string;
-  data?: {
-    labels: string[];
-    datasets: {
-      fill: boolean;
-      label: string;
-      data: any[];
-      borderColor: string;
-      backgroundColor: string;
-    }[];
-  };
+  national_name?: string;
+  local_name?: string;
+  data?: any;
 };
 
-const initialState: State = {
-  location: "",
-};
+const initialState: State = {};
 
 function deserializeRequests(bytes: Uint8Array) {
   let deserializer = new bincode.BincodeDeserializer(bytes);
@@ -141,37 +131,47 @@ const Home: NextPage = () => {
           let bytes = view();
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
-          let data: any = undefined;
-          let periods =
-            viewModel.mode.constructor === types.ModeVariantNational
-              ? viewModel.national
-              : viewModel.local;
 
-          if (periods?.length > 0) {
-            const labels = periods.map((period) => {
-              const date = new Date(period.from);
+          const labels = (viewModel.national || viewModel.local || []).map(
+            (point) => {
+              const date = new Date(point.date);
               return `${zeroPad(date.getHours(), 2)}:${zeroPad(
                 date.getMinutes(),
                 2
               )}`;
-            });
-            data = {
-              labels,
-              datasets: [
-                {
-                  fill: true,
-                  label: "Forecast",
-                  data: periods.map((period) => period.intensity.forecast),
-                  borderColor: "rgb(53, 162, 235)",
-                  backgroundColor: "rgba(53, 162, 235, 0.5)",
-                  cubicInterpolationMode: "monotone",
-                  tension: 0.4,
-                },
-              ],
-            };
-          }
+            }
+          );
+          let data = {
+            labels,
+            datasets: [
+              viewModel.national
+                ? {
+                    fill: true,
+                    label: `${viewModel.national_name} average`,
+                    data: viewModel.national.map((point) => point.forecast),
+                    borderColor: "rgb(53, 162, 235)",
+                    backgroundColor: "rgba(53, 162, 235, 0.5)",
+                    cubicInterpolationMode: "monotone",
+                    tension: 0.4,
+                  }
+                : undefined,
+              viewModel.local
+                ? {
+                    fill: true,
+                    label: viewModel.local_name,
+                    data: viewModel.local.map((point) => point.forecast),
+                    borderColor: "rgb(255,	205,	86)",
+                    backgroundColor: "rgb(255,	205,	86, 0.5)",
+                    cubicInterpolationMode: "monotone",
+                    tension: 0.4,
+                  }
+                : {},
+            ],
+          };
+
           setState({
-            location: viewModel.location,
+            local_name: viewModel.local_name,
+            national_name: viewModel.national_name,
             data,
           });
 
@@ -211,8 +211,8 @@ const Home: NextPage = () => {
       // Initial event
       dispatch({
         kind: "event",
-        event: new types.EventVariantSwitchMode(
-          new types.ModeVariantNational()
+        event: new types.EventVariantGetIntensityData(
+          new types.ScopeVariantNational()
         ),
       });
     }
@@ -245,15 +245,14 @@ const Home: NextPage = () => {
               />
             )}
           </div>
-          <p className="is-size-4">{state.location}</p>
           <div className="buttons section is-centered">
             <button
               className="button is-primary is-success"
               onClick={() =>
                 dispatch({
                   kind: "event",
-                  event: new types.EventVariantSwitchMode(
-                    new types.ModeVariantNational()
+                  event: new types.EventVariantGetIntensityData(
+                    new types.ScopeVariantNational()
                   ),
                 })
               }
@@ -265,8 +264,8 @@ const Home: NextPage = () => {
               onClick={() =>
                 dispatch({
                   kind: "event",
-                  event: new types.EventVariantSwitchMode(
-                    new types.ModeVariantLocal()
+                  event: new types.EventVariantGetIntensityData(
+                    new types.ScopeVariantLocal()
                   ),
                 })
               }
