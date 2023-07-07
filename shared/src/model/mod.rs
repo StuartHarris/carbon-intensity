@@ -8,6 +8,7 @@ pub mod global;
 pub mod intensity;
 pub mod location;
 pub mod national;
+pub mod national_mix;
 pub mod postcode;
 pub mod regional;
 
@@ -22,7 +23,10 @@ pub enum Scope {
 pub trait DataSet {}
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
-pub struct National;
+pub struct National {
+    pub generation_mix: Vec<Period>,
+}
+
 impl DataSet for National {}
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]

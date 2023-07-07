@@ -11,9 +11,9 @@ use crate::{
     },
     model::{
         location::{Coordinate, Location},
-        national, postcode, regional, CurrentQuery, Model,
+        national, national_mix, postcode, regional, CurrentQuery, Model,
     },
-    view_model::{self, ViewModel},
+    view_model::ViewModel,
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -31,6 +31,8 @@ pub enum Event {
     SetRegional(crux_http::Result<crux_http::Response<regional::RegionalResponse>>),
     #[serde(skip)]
     SetNational(crux_http::Result<crux_http::Response<national::NationalResponse>>),
+    #[serde(skip)]
+    SetNationalMix(crux_http::Result<crux_http::Response<national_mix::NationalMixResponse>>),
 }
 
 #[cfg_attr(feature = "typegen", derive(crux_macros::Export))]
@@ -78,6 +80,10 @@ impl crux_core::App for App {
                                 .get(national::url(&model.time))
                                 .expect_json()
                                 .send(Event::SetNational);
+                            caps.http
+                                .get(national_mix::url(&model.time))
+                                .expect_json()
+                                .send(Event::SetNationalMix);
                         }
                         CurrentQuery::Local => {
                             caps.location.get(Event::SetLocation);
@@ -134,38 +140,19 @@ impl crux_core::App for App {
                 caps.render.render();
             }
             Event::SetNational(Err(_)) => {}
+            Event::SetNationalMix(Ok(mut response)) => {
+                let national = response.take_body().unwrap();
+                model.national.scope.generation_mix = national.data.clone();
+                model.national.last_updated = model.time;
+
+                caps.render.render();
+            }
+            Event::SetNationalMix(Err(_)) => {}
         };
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        let location = model.local.scope.location.clone();
-        ViewModel {
-            national_name: "UK".to_string(),
-            national: model
-                .national
-                .periods
-                .clone()
-                .into_iter()
-                .map(view_model::DataPoint::from)
-                .collect(),
-            local_name: if location.is_some() {
-                format!(
-                    "{area}, {code}",
-                    area = location.clone().unwrap().admin_district,
-                    code = location.unwrap().outcode,
-                )
-            } else {
-                "Local".to_string()
-            },
-            local: model
-                .local
-                .periods
-                .clone()
-                .into_iter()
-                .map(view_model::DataPoint::from)
-                .collect(),
-            // points: Default::default(),
-        }
+        model.into()
     }
 }
 
@@ -173,8 +160,8 @@ impl crux_core::App for App {
 mod tests {
     use super::*;
     use crate::model::{
-        location::Location, national::NationalResponse, postcode::PostcodeResponse,
-        regional::RegionalResponse, CurrentQuery,
+        location::Location, national::NationalResponse, national_mix::NationalMixResponse,
+        postcode::PostcodeResponse, regional::RegionalResponse, CurrentQuery,
     };
     use assert_matches::assert_matches;
     use crux_core::{assert_effect, testing::AppTester};
@@ -374,6 +361,8 @@ mod tests {
                 perc: 18
         last_updated: "2023-07-06T20:30:00Z"
         "###);
+
+        // check that the view renders as expected
         insta::assert_yaml_snapshot!(app.view(&model), @r###"
         ---
         national_name: UK
@@ -383,11 +372,29 @@ mod tests {
           - date: "2023-07-04T23:30:00+00:00"
             forecast: 121
             actual: ~
-            category: Total
+            mix:
+              gas: 17.2
+              coal: 0
+              biomass: 0
+              nuclear: 0
+              hydro: 0.2
+              imports: 66.1
+              other: 0
+              wind: 16.5
+              solar: 0
           - date: "2023-07-05T00:00:00+00:00"
             forecast: 116
             actual: ~
-            category: Total
+            mix:
+              gas: 16.1
+              coal: 0
+              biomass: 0
+              nuclear: 0
+              hydro: 0.2
+              imports: 65.6
+              other: 0
+              wind: 18
+              solar: 0.1
         "###);
     }
 
@@ -412,7 +419,7 @@ mod tests {
         let expected = &vec![set_time_event.clone()];
         assert_eq!(actual, expected);
 
-        // update the app and check it updates the model and we get an http request
+        // update the app and check it updates the model
         let update = app.update(set_time_event, &mut model);
         assert_eq!(
             model.time,
@@ -420,13 +427,14 @@ mod tests {
                 .unwrap()
                 .with_timezone(&Utc)
         );
+
+        // we should get 2 http requests, one for intensity and one for generation mix
         let requests = &mut update.into_effects().filter_map(Effect::into_http);
 
-        // get the first http request and check there are no more
+        // get the first http request
         let mut request = requests.next().unwrap();
-        assert!(requests.next().is_none());
 
-        // check the national request has the expected url
+        // check the intensity request has the expected url
         let actual = &request.operation;
         let expected = &HttpRequest::get(
             "https://api.carbonintensity.org.uk/intensity/2023-07-06T20:30Z/fw24h",
@@ -434,13 +442,13 @@ mod tests {
         .build();
         assert_eq!(actual, expected);
 
-        // resolve a simulated regional response
+        // resolve a simulated intensity response
         let simulated_response: NationalResponse =
             serde_json::from_str(include_str!("./fixtures/national.json")).unwrap();
         let response = HttpResponse::status(200).json(&simulated_response).build();
         let update = app.resolve(&mut request, response).unwrap();
 
-        // check the regional response raises a SetRegional event
+        // check the intensity response raises a SetNational event
         let set_national_event = Event::SetNational(Ok(ResponseBuilder::ok()
             .body(simulated_response)
             .build()
@@ -456,7 +464,8 @@ mod tests {
         }
         insta::assert_yaml_snapshot!(model.national, @r###"
         ---
-        scope: ~
+        scope:
+          generation_mix: []
         periods:
           - from: "2023-07-04T23:30:00Z"
             to: "2023-07-05T00:00:00Z"
@@ -474,6 +483,105 @@ mod tests {
             generationmix: ~
         last_updated: "2023-07-06T20:30:00Z"
         "###);
+
+        // get the second http request
+        let mut request = requests.next().unwrap();
+
+        // check the generation mix request has the expected url
+        let actual = &request.operation;
+        let expected = &HttpRequest::get(
+            "https://api.carbonintensity.org.uk/generation/2023-07-06T20:30Z/2023-07-07T20:30Z",
+        )
+        .build();
+        assert_eq!(actual, expected);
+
+        // resolve a simulated generation response
+        let simulated_response: NationalMixResponse =
+            serde_json::from_str(include_str!("./fixtures/national_mix.json")).unwrap();
+        let response = HttpResponse::status(200).json(&simulated_response).build();
+        let update = app.resolve(&mut request, response).unwrap();
+
+        // check the intensity response raises a SetNational event
+        let set_national_mix_event = Event::SetNationalMix(Ok(ResponseBuilder::ok()
+            .body(simulated_response)
+            .build()
+            .clone()));
+        let actual = &update.events;
+        let expected = &vec![set_national_mix_event.clone()];
+        assert_eq!(actual, expected);
+
+        // check that the SetNationalMix event updates the model and renders
+        for event in update.events {
+            let update = app.update(event, &mut model);
+            assert_effect!(update, Effect::Render(_));
+        }
+        insta::assert_yaml_snapshot!(model.national, @r###"
+        ---
+        scope:
+          generation_mix:
+            - from: "2023-07-04T23:30:00Z"
+              to: "2023-07-05T00:00:00Z"
+              intensity: ~
+              generationmix:
+                - fuel: biomass
+                  perc: 5.4
+                - fuel: coal
+                  perc: 0
+                - fuel: imports
+                  perc: 7.5
+                - fuel: gas
+                  perc: 41.2
+                - fuel: nuclear
+                  perc: 24.2
+                - fuel: other
+                  perc: 0
+                - fuel: hydro
+                  perc: 0.3
+                - fuel: solar
+                  perc: 0
+                - fuel: wind
+                  perc: 21.3
+            - from: "2023-07-05T00:00:00Z"
+              to: "2023-07-05T00:30:00Z"
+              intensity: ~
+              generationmix:
+                - fuel: biomass
+                  perc: 5.3
+                - fuel: coal
+                  perc: 0
+                - fuel: imports
+                  perc: 7.6
+                - fuel: gas
+                  perc: 41.1
+                - fuel: nuclear
+                  perc: 24.3
+                - fuel: other
+                  perc: 0
+                - fuel: hydro
+                  perc: 0.3
+                - fuel: solar
+                  perc: 0
+                - fuel: wind
+                  perc: 21.4
+        periods:
+          - from: "2023-07-04T23:30:00Z"
+            to: "2023-07-05T00:00:00Z"
+            intensity:
+              forecast: 142
+              actual: 129
+              index: moderate
+            generationmix: ~
+          - from: "2023-07-05T00:00:00Z"
+            to: "2023-07-05T00:30:00Z"
+            intensity:
+              forecast: 136
+              actual: 122
+              index: moderate
+            generationmix: ~
+        last_updated: "2023-07-06T20:30:00Z"
+        "###);
+
+        // check the view renders as expected
         insta::assert_yaml_snapshot!(app.view(&model), @r###"
         ---
         national_name: UK
@@ -481,11 +589,29 @@ mod tests {
           - date: "2023-07-04T23:30:00+00:00"
             forecast: 142
             actual: 129
-            category: Total
+            mix:
+              gas: 41.2
+              coal: 0
+              biomass: 5.4
+              nuclear: 24.2
+              hydro: 0.3
+              imports: 7.5
+              other: 0
+              wind: 21.3
+              solar: 0
           - date: "2023-07-05T00:00:00+00:00"
             forecast: 136
             actual: 122
-            category: Total
+            mix:
+              gas: 41.1
+              coal: 0
+              biomass: 5.3
+              nuclear: 24.3
+              hydro: 0.3
+              imports: 7.6
+              other: 0
+              wind: 21.4
+              solar: 0
         local_name: Local
         local: []
         "###);

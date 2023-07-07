@@ -9,7 +9,7 @@ pub struct Period {
     pub from: DateTime<Utc>,
     #[serde(deserialize_with = "period_date_time_deserialize")]
     pub to: DateTime<Utc>,
-    pub intensity: Intensity,
+    pub intensity: Option<Intensity>,
     #[serde(rename = "generationmix")]
     pub generation_mix: Option<Vec<GenerationMix>>,
 }
