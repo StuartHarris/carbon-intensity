@@ -82,7 +82,9 @@ interface Response {
 type State = {
   national_name?: string;
   local_name?: string;
-  data?: any;
+  intensity_data?: any;
+  mix_data?: any;
+  mix_options?: any;
 };
 
 const initialState: State = {};
@@ -141,7 +143,7 @@ const Home: NextPage = () => {
               )}`;
             }
           );
-          let data = {
+          let intensity_data = {
             labels,
             datasets: [
               viewModel.national
@@ -168,11 +170,130 @@ const Home: NextPage = () => {
                 : {},
             ],
           };
+          let mix_options = {
+            ...options,
+            interaction: {
+              mode: "nearest",
+              axis: "x",
+              intersect: false,
+            },
+            scales: {
+              y: {
+                stacked: true,
+                min: 0,
+                max: 100,
+              },
+            },
+          };
+          let points = Object.fromEntries(
+            [
+              "gas",
+              "coal",
+              "biomass",
+              "nuclear",
+              "hydro",
+              "imports",
+              "other",
+              "wind",
+              "solar",
+            ].map((type) => [
+              type,
+              viewModel.national.map((point) => point.mix[type]),
+            ])
+          );
+          let mix_data = {
+            labels,
+            datasets: [
+              {
+                fill: "origin",
+                label: `${viewModel.national_name} Gas`,
+                data: points["gas"],
+                borderColor: "rgb(112, 48, 160)",
+                backgroundColor: "rgba(112, 48, 160, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+              {
+                fill: "-1",
+                label: `${viewModel.national_name} Coal`,
+                data: points["coal"],
+                borderColor: "rgb(44, 42, 40)",
+                backgroundColor: "rgba(44, 42, 40, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+              {
+                fill: "-1",
+                label: `${viewModel.national_name} Biomass`,
+                data: points["biomass"],
+                borderColor: "rgb(239, 133, 52)",
+                backgroundColor: "rgba(239, 133, 52, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+              {
+                fill: "-1",
+                label: `${viewModel.national_name} Nuclear`,
+                data: points["nuclear"],
+                borderColor: "rgb(75, 138, 68)",
+                backgroundColor: "rgba(75, 138, 68, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+              {
+                fill: "-1",
+                label: `${viewModel.national_name} Hydro`,
+                data: points["hydro"],
+                borderColor: "rgb(53, 162, 235)",
+                backgroundColor: "rgba(53, 162, 235, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+              {
+                fill: "-1",
+                label: `${viewModel.national_name} Imports`,
+                data: points["imports"],
+                borderColor: "rgb(235, 85, 110)",
+                backgroundColor: "rgba(235, 85, 110, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+              {
+                fill: "-1",
+                label: `${viewModel.national_name} Other`,
+                data: points["other"],
+                borderColor: "rgb(172, 221, 170)",
+                backgroundColor: "rgba(172, 221, 170, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+              {
+                fill: "-1",
+                label: `${viewModel.national_name} Wind`,
+                data: points["wind"],
+                borderColor: "rgb(79, 171, 213)",
+                backgroundColor: "rgba(79, 171, 213, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+              {
+                fill: "-1",
+                label: `${viewModel.national_name} Solar`,
+                data: points["solar"],
+                borderColor: "rgb(247, 209, 71)",
+                backgroundColor: "rgba(247, 209, 71, 0.5)",
+                cubicInterpolationMode: "monotone",
+                tension: 0.4,
+              },
+            ],
+          };
 
           setState({
             local_name: viewModel.local_name,
             national_name: viewModel.national_name,
-            data,
+            intensity_data,
+            mix_data,
+            mix_options,
           });
 
           break;
@@ -234,10 +355,27 @@ const Home: NextPage = () => {
               padding: "1%",
             }}
           >
-            {state.data && (
+            {state.intensity_data && (
               <Line
                 options={options}
-                data={state.data}
+                data={state.intensity_data}
+                height="200px"
+                width="200px"
+              />
+            )}
+          </div>
+          <div
+            style={{
+              height: "60vh",
+              position: "relative",
+              marginBottom: "1%",
+              padding: "1%",
+            }}
+          >
+            {state.mix_data && (
+              <Line
+                options={state.mix_options}
+                data={state.mix_data}
                 height="200px"
                 width="200px"
               />
