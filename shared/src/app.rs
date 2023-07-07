@@ -9,7 +9,7 @@ use crate::{
         location::{GetLocation, LocationResponse},
         time::{Time, TimeResponse},
     },
-    model::{intensity, postcode, regional, Model},
+    model::{national, postcode, regional, Model},
     view_model, Mode,
 };
 
@@ -25,6 +25,8 @@ pub enum Event {
     SetPostcode(crux_http::Result<crux_http::Response<postcode::PostcodeResponse>>),
     #[serde(skip)]
     SetRegional(crux_http::Result<crux_http::Response<regional::RegionalResponse>>),
+    #[serde(skip)]
+    SetNational(crux_http::Result<crux_http::Response<national::NationalResponse>>),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -70,10 +72,10 @@ impl crux_core::App for App {
                     .with_timezone(&Utc);
                 match model.mode {
                     Mode::National => {
-                        // caps.http
-                        //     .get(intensity::url(&iso_time, "GB"))
-                        //     .expect_json()
-                        //     .send(Event::SetRegional);
+                        caps.http
+                            .get(national::url(&model.time))
+                            .expect_json()
+                            .send(Event::SetNational);
                     }
                     Mode::Local => {
                         caps.location.get(Event::SetLocation);
@@ -95,7 +97,7 @@ impl crux_core::App for App {
                 let postcode = postcode.take_body().unwrap();
                 let postcode = postcode.result[0].clone(); // TODO error handling
                 let outcode = postcode.outcode;
-                let url = intensity::url(&model.time, &outcode);
+                let url = regional::url(&model.time, &outcode);
 
                 model.outcode = Some(outcode);
                 model.admin_district = Some(postcode.admin_district.clone());
@@ -111,6 +113,13 @@ impl crux_core::App for App {
                 caps.render.render();
             }
             Event::SetRegional(Err(_)) => {}
+            Event::SetNational(Ok(mut national)) => {
+                let regional = national.take_body().unwrap();
+                model.periods = regional.data.clone();
+
+                caps.render.render();
+            }
+            Event::SetNational(Err(_)) => {}
         };
 
         caps.render.render();
@@ -136,7 +145,8 @@ impl crux_core::App for App {
 mod tests {
     use super::*;
     use crate::model::{
-        location::Location, postcode::PostcodeResponse, regional::RegionalResponse,
+        location::Location, national::NationalResponse, postcode::PostcodeResponse,
+        regional::RegionalResponse,
     };
     use crux_core::{assert_effect, testing::AppTester};
     use crux_http::{
@@ -145,7 +155,7 @@ mod tests {
     };
 
     #[test]
-    fn regional_happy_path() {
+    fn local_happy_path() {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
@@ -319,6 +329,88 @@ mod tests {
               perc: 0.1
             - fuel: wind
               perc: 18
+        "###);
+    }
+
+    #[test]
+    fn national_happy_path() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+
+        // switch to "national" mode and check we update the model and get a time request
+        let update = app.update(Event::SwitchMode(Mode::National), &mut model);
+        assert_eq!(model.mode, Mode::National);
+        let requests = &mut update.into_effects().filter_map(Effect::into_time);
+
+        // resolve the time request with a simulated time response
+        let mut request = requests.next().unwrap();
+        let response = TimeResponse("2023-07-06T20:30:00Z".to_string());
+        let update = app.resolve(&mut request, response.clone()).unwrap();
+
+        // check this raises the correct set time event
+        let set_time_event = Event::CurrentTime(response.clone());
+        let actual = &update.events;
+        let expected = &vec![set_time_event.clone()];
+        assert_eq!(actual, expected);
+
+        // update the app and check it updates the model and we get an http request
+        let update = app.update(set_time_event, &mut model);
+        assert_eq!(
+            model.time,
+            DateTime::parse_from_rfc3339("2023-07-06T20:30:00Z")
+                .unwrap()
+                .with_timezone(&Utc)
+        );
+        let requests = &mut update.into_effects().filter_map(Effect::into_http);
+
+        // get the first http request and check there are no more
+        let mut request = requests.next().unwrap();
+        assert!(requests.next().is_none());
+
+        // check the national request has the expected url
+        let actual = &request.operation;
+        let expected = &HttpRequest::get(
+            "https://api.carbonintensity.org.uk/intensity/2023-07-06T20:30Z/fw24h",
+        )
+        .build();
+        assert_eq!(actual, expected);
+
+        // resolve a simulated regional response
+        let simulated_response: NationalResponse =
+            serde_json::from_str(include_str!("./fixtures/national.json")).unwrap();
+        let response = HttpResponse::status(200).json(&simulated_response).build();
+        let update = app.resolve(&mut request, response).unwrap();
+
+        // check the regional response raises a SetRegional event
+        let set_national_event = Event::SetNational(Ok(ResponseBuilder::ok()
+            .body(simulated_response)
+            .build()
+            .clone()));
+        let actual = &update.events;
+        let expected = &vec![set_national_event.clone()];
+        assert_eq!(actual, expected);
+
+        // check that the SetNational event updates the model and renders
+        for event in update.events {
+            let update = app.update(event, &mut model);
+            assert_effect!(update, Effect::Render(_));
+        }
+        insta::assert_yaml_snapshot!(model.periods, @r###"
+        ---
+        - from: "2023-07-04T23:30:00Z"
+          to: "2023-07-05T00:00:00Z"
+          intensity:
+            forecast: 142
+            actual: 129
+            index: moderate
+          generationmix: ~
+        - from: "2023-07-05T00:00:00Z"
+          to: "2023-07-05T00:30:00Z"
+          intensity:
+            forecast: 136
+            actual: 122
+            index: moderate
+          generationmix: ~
         "###);
     }
 }

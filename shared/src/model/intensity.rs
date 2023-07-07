@@ -1,19 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
-use url::Url;
 
-const INTENSITY_API: &str = "https://api.carbonintensity.org.uk";
-
-pub(crate) fn url(from: &DateTime<Utc>, outcode: &str) -> Url {
-    let from = from.format("%Y-%m-%dT%H:%M").to_string() + "Z";
-    let base = Url::parse(INTENSITY_API).unwrap();
-    let url = base
-        .join(&format!(
-            "/regional/intensity/{from}/fw24h/postcode/{outcode}"
-        ))
-        .unwrap();
-    url
-}
+pub const INTENSITY_API: &str = "https://api.carbonintensity.org.uk";
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Period {

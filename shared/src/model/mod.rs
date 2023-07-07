@@ -7,6 +7,7 @@ pub mod factors;
 pub mod global;
 pub mod intensity;
 pub mod location;
+pub mod national;
 pub mod postcode;
 pub mod regional;
 
