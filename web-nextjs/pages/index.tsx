@@ -76,7 +76,7 @@ interface Event {
 interface Response {
   kind: "response";
   uuid: number[];
-  outcome: types.HttpResponse | types.LocationResponse;
+  outcome: types.HttpResponse | types.LocationResponse | types.TimeResponse;
 }
 
 type State = {
@@ -177,6 +177,11 @@ const Home: NextPage = () => {
           break;
         }
 
+        case types.EffectVariantTime: {
+          const outcome = new types.TimeResponse(new Date().toISOString());
+          respond({ kind: "response", uuid, outcome });
+          break;
+        }
         case types.EffectVariantHttp: {
           const request = (effect as types.EffectVariantHttp).value;
           const outcome = await httpRequest(request);

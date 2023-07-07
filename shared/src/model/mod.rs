@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use self::intensity::Period;
@@ -19,6 +20,7 @@ pub enum Mode {
 #[derive(Default)]
 pub struct Model {
     pub mode: Mode,
+    pub time: DateTime<Utc>,
     pub outcode: Option<String>,
     pub admin_district: Option<String>,
     pub periods: Vec<Period>,

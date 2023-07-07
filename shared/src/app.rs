@@ -1,10 +1,14 @@
+use chrono::{DateTime, Utc};
 use crux_core::render::Render;
 use crux_http::Http;
 use crux_macros::Effect;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    capabilities::location::{GetLocation, LocationResponse},
+    capabilities::{
+        location::{GetLocation, LocationResponse},
+        time::{Time, TimeResponse},
+    },
     model::{intensity, postcode, regional, Model},
     view_model, Mode,
 };
@@ -14,6 +18,7 @@ pub enum Event {
     SwitchMode(Mode),
 
     // events local to the core
+    CurrentTime(TimeResponse),
     #[serde(skip)]
     SetLocation(LocationResponse),
     #[serde(skip)]
@@ -36,6 +41,7 @@ pub struct ViewModel {
 pub struct Capabilities {
     render: Render<Event>,
     location: GetLocation<Event>,
+    time: Time<Event>,
     pub http: Http<Event>,
 }
 
@@ -52,11 +58,27 @@ impl crux_core::App for App {
         match event {
             Event::SwitchMode(Mode::National) => {
                 model.mode = Mode::National;
-                model.periods = vec![];
+                caps.time.get(Event::CurrentTime);
             }
             Event::SwitchMode(Mode::Local) => {
                 model.mode = Mode::Local;
-                caps.location.get(Event::SetLocation);
+                caps.time.get(Event::CurrentTime);
+            }
+            Event::CurrentTime(TimeResponse(iso_time)) => {
+                model.time = DateTime::parse_from_rfc3339(&iso_time)
+                    .unwrap()
+                    .with_timezone(&Utc);
+                match model.mode {
+                    Mode::National => {
+                        // caps.http
+                        //     .get(intensity::url(&iso_time, "GB"))
+                        //     .expect_json()
+                        //     .send(Event::SetRegional);
+                    }
+                    Mode::Local => {
+                        caps.location.get(Event::SetLocation);
+                    }
+                }
             }
             Event::SetLocation(LocationResponse {
                 location: Some(location),
@@ -71,13 +93,12 @@ impl crux_core::App for App {
             Event::SetLocation(LocationResponse { location: None }) => {}
             Event::SetPostcode(Ok(mut postcode)) => {
                 let postcode = postcode.take_body().unwrap();
-                let postcode = postcode.result[0].clone();
-                let outcode = postcode.outcode; // TODO error handling
-                let from = "2023-07-06T20:30Z"; // TODO
-                let url = intensity::url(&from, &outcode);
+                let postcode = postcode.result[0].clone(); // TODO error handling
+                let outcode = postcode.outcode;
+                let url = intensity::url(&model.time, &outcode);
 
                 model.outcode = Some(outcode);
-                model.admin_district = Some(postcode.admin_district.clone()); // TODO error handling
+                model.admin_district = Some(postcode.admin_district.clone());
 
                 caps.http.get(url).expect_json().send(Event::SetRegional);
                 caps.render.render();
@@ -128,16 +149,34 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        // switch to "here" mode and check we update the model and get a location request
+        // switch to "local" mode and check we update the model and get a time request
         let update = app.update(Event::SwitchMode(Mode::Local), &mut model);
         assert_eq!(model.mode, Mode::Local);
+        let requests = &mut update.into_effects().filter_map(Effect::into_time);
+
+        // resolve the time request with a simulated time response
+        let mut request = requests.next().unwrap();
+        let response = TimeResponse("2023-07-06T20:30:00Z".to_string());
+        let update = app.resolve(&mut request, response.clone()).unwrap();
+
+        // check this raises the correct set time event
+        let set_time_event = Event::CurrentTime(response.clone());
+        let actual = &update.events;
+        let expected = &vec![set_time_event.clone()];
+        assert_eq!(actual, expected);
+
+        // update the app and check it updates the model and we get a location request
+        let update = app.update(set_time_event, &mut model);
+        assert_eq!(
+            model.time,
+            DateTime::parse_from_rfc3339("2023-07-06T20:30:00Z")
+                .unwrap()
+                .with_timezone(&Utc)
+        );
         let requests = &mut update.into_effects().filter_map(Effect::into_location);
 
-        // get the first location request and check there are no more
+        // resolve the location request with a simulated location response
         let mut request = requests.next().unwrap();
-        assert!(requests.next().is_none());
-
-        // resolve a simulated location response
         let response = LocationResponse {
             location: Some(Location {
                 latitude: 51.403366,

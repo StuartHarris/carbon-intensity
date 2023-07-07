@@ -4,7 +4,8 @@ use url::Url;
 
 const INTENSITY_API: &str = "https://api.carbonintensity.org.uk";
 
-pub(crate) fn url(from: &str, outcode: &str) -> Url {
+pub(crate) fn url(from: &DateTime<Utc>, outcode: &str) -> Url {
+    let from = from.format("%Y-%m-%dT%H:%M").to_string() + "Z";
     let base = Url::parse(INTENSITY_API).unwrap();
     let url = base
         .join(&format!(
