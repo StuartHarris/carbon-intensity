@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use crux_core::render::Render;
 use crux_http::Http;
 use crux_macros::Effect;
@@ -32,9 +32,9 @@ pub enum Event {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ViewModel {
     pub mode: Mode,
-    pub outcode: Option<String>,
-    pub admin_district: Option<String>,
-    pub periods: Vec<view_model::Period>,
+    pub location: String,
+    pub national: Vec<view_model::Period>,
+    pub local: Vec<view_model::Period>,
     // pub points: Vec<view_model::DataPoint>,
 }
 
@@ -67,19 +67,29 @@ impl crux_core::App for App {
                 caps.time.get(Event::CurrentTime);
             }
             Event::CurrentTime(TimeResponse(iso_time)) => {
-                model.time = DateTime::parse_from_rfc3339(&iso_time)
+                let last_updated = match model.mode {
+                    Mode::National => model.national_updated,
+                    Mode::Local => model.local_updated,
+                };
+                let current_time = DateTime::parse_from_rfc3339(&iso_time)
                     .unwrap()
                     .with_timezone(&Utc);
-                match model.mode {
-                    Mode::National => {
-                        caps.http
-                            .get(national::url(&model.time))
-                            .expect_json()
-                            .send(Event::SetNational);
+                model.time = current_time;
+
+                if current_time - last_updated > Duration::minutes(30) {
+                    match model.mode {
+                        Mode::National => {
+                            caps.http
+                                .get(national::url(&model.time))
+                                .expect_json()
+                                .send(Event::SetNational);
+                        }
+                        Mode::Local => {
+                            caps.location.get(Event::SetLocation);
+                        }
                     }
-                    Mode::Local => {
-                        caps.location.get(Event::SetLocation);
-                    }
+                } else {
+                    caps.render.render();
                 }
             }
             Event::SetLocation(LocationResponse {
@@ -91,6 +101,7 @@ impl crux_core::App for App {
                     .unwrap()
                     .expect_json()
                     .send(Event::SetPostcode);
+                caps.render.render();
             }
             Event::SetLocation(LocationResponse { location: None }) => {}
             Event::SetPostcode(Ok(mut postcode)) => {
@@ -106,36 +117,48 @@ impl crux_core::App for App {
                 caps.render.render();
             }
             Event::SetPostcode(Err(_)) => {}
-            Event::SetRegional(Ok(mut regional)) => {
-                let regional = regional.take_body().unwrap();
-                model.periods = regional.data.data.clone();
+            Event::SetRegional(Ok(mut response)) => {
+                let regional = response.take_body().unwrap();
+                model.local = regional.data.data.clone();
+                model.local_updated = model.time;
 
                 caps.render.render();
             }
             Event::SetRegional(Err(_)) => {}
-            Event::SetNational(Ok(mut national)) => {
-                let regional = national.take_body().unwrap();
-                model.periods = regional.data.clone();
+            Event::SetNational(Ok(mut response)) => {
+                let national = response.take_body().unwrap();
+                model.national = national.data.clone();
+                model.national_updated = model.time;
 
                 caps.render.render();
             }
             Event::SetNational(Err(_)) => {}
         };
-
-        caps.render.render();
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         ViewModel {
-            periods: model
-                .periods
+            national: model
+                .national
+                .clone()
+                .into_iter()
+                .map(view_model::Period::from)
+                .collect(),
+            local: model
+                .local
                 .clone()
                 .into_iter()
                 .map(view_model::Period::from)
                 .collect(),
             mode: model.mode.clone(),
-            outcode: model.outcode.clone(),
-            admin_district: model.admin_district.clone(),
+            location: match model.mode {
+                Mode::National => "UK".to_string(),
+                Mode::Local => format!(
+                    "{}, {}",
+                    model.outcode.clone().unwrap_or_default(),
+                    model.admin_district.clone().unwrap_or_default()
+                ),
+            },
             // points: Default::default(),
         }
     }
@@ -277,7 +300,7 @@ mod tests {
             let update = app.update(event, &mut model);
             assert_effect!(update, Effect::Render(_));
         }
-        insta::assert_yaml_snapshot!(model.periods, @r###"
+        insta::assert_yaml_snapshot!(model.local, @r###"
         ---
         - from: "2023-07-04T23:30:00Z"
           to: "2023-07-05T00:00:00Z"
@@ -395,7 +418,7 @@ mod tests {
             let update = app.update(event, &mut model);
             assert_effect!(update, Effect::Render(_));
         }
-        insta::assert_yaml_snapshot!(model.periods, @r###"
+        insta::assert_yaml_snapshot!(model.national, @r###"
         ---
         - from: "2023-07-04T23:30:00Z"
           to: "2023-07-05T00:00:00Z"
@@ -412,5 +435,56 @@ mod tests {
             index: moderate
           generationmix: ~
         "###);
+    }
+
+    #[test]
+    fn do_not_get_local_if_less_than_30_mins_has_elapsed() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+        model.local_updated = DateTime::parse_from_rfc3339("2023-07-06T20:30:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        // switch to "local" mode and get a time request
+        let update = app.update(Event::SwitchMode(Mode::Local), &mut model);
+        let mut request = &mut update.into_effects().find_map(Effect::into_time).unwrap();
+
+        // resolve the time request with a simulated time response
+        let response = TimeResponse("2023-07-06T20:59:00Z".to_string());
+        let update = app.resolve(&mut request, response).unwrap();
+
+        // update the app and check we only get a render effect
+        for event in update.events {
+            let update = app.update(event, &mut model);
+            assert_effect!(update, Effect::Render(_));
+            assert_eq!(update.effects.len(), 1);
+        }
+    }
+
+    #[test]
+    fn get_national_if_more_than_30_mins_has_elapsed() {
+        let app = AppTester::<App, _>::default();
+        let mut model = Model::default();
+        model.national_updated = DateTime::parse_from_rfc3339("2023-07-06T20:30:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        // switch to "national" mode and get a time request
+        let update = app.update(Event::SwitchMode(Mode::National), &mut model);
+        let mut request = &mut update.into_effects().find_map(Effect::into_time).unwrap();
+
+        // resolve the time request with a simulated time response
+        let response = TimeResponse("2023-07-06T21:01:00Z".to_string());
+        let update = app.resolve(&mut request, response).unwrap();
+
+        // update the app and check the resulting request has the expected url
+        let update = app.update(update.events[0].clone(), &mut model);
+        let request = &mut update.into_effects().find_map(Effect::into_http).unwrap();
+        let actual = &request.operation;
+        let expected = &HttpRequest::get(
+            "https://api.carbonintensity.org.uk/intensity/2023-07-06T21:01Z/fw24h",
+        )
+        .build();
+        assert_eq!(actual, expected);
     }
 }

@@ -80,8 +80,7 @@ interface Response {
 }
 
 type State = {
-  outcode?: string;
-  adminDistrict?: string;
+  location?: string;
   data?: {
     labels: string[];
     datasets: {
@@ -95,8 +94,7 @@ type State = {
 };
 
 const initialState: State = {
-  outcode: "",
-  adminDistrict: "",
+  location: "",
 };
 
 function deserializeRequests(bytes: Uint8Array) {
@@ -135,6 +133,7 @@ const Home: NextPage = () => {
 
   const handleRequests = async (bytes: Uint8Array) => {
     let requests = deserializeRequests(bytes);
+    console.log("requests", requests);
 
     for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
@@ -143,8 +142,13 @@ const Home: NextPage = () => {
           let viewDeserializer = new bincode.BincodeDeserializer(bytes);
           let viewModel = types.ViewModel.deserialize(viewDeserializer);
           let data: any = undefined;
-          if (viewModel.periods?.length > 0) {
-            const labels = viewModel.periods.map((period) => {
+          let periods =
+            viewModel.mode.constructor === types.ModeVariantNational
+              ? viewModel.national
+              : viewModel.local;
+
+          if (periods?.length > 0) {
+            const labels = periods.map((period) => {
               const date = new Date(period.from);
               return `${zeroPad(date.getHours(), 2)}:${zeroPad(
                 date.getMinutes(),
@@ -157,9 +161,7 @@ const Home: NextPage = () => {
                 {
                   fill: true,
                   label: "Forecast",
-                  data: viewModel.periods.map(
-                    (period) => period.intensity.forecast
-                  ),
+                  data: periods.map((period) => period.intensity.forecast),
                   borderColor: "rgb(53, 162, 235)",
                   backgroundColor: "rgba(53, 162, 235, 0.5)",
                   cubicInterpolationMode: "monotone",
@@ -169,8 +171,7 @@ const Home: NextPage = () => {
             };
           }
           setState({
-            outcode: viewModel.outcode,
-            adminDistrict: viewModel.admin_district,
+            location: viewModel.location,
             data,
           });
 
@@ -182,6 +183,7 @@ const Home: NextPage = () => {
           respond({ kind: "response", uuid, outcome });
           break;
         }
+
         case types.EffectVariantHttp: {
           const request = (effect as types.EffectVariantHttp).value;
           const outcome = await httpRequest(request);
@@ -191,6 +193,7 @@ const Home: NextPage = () => {
 
         case types.EffectVariantGetLocation: {
           const request = (effect as types.EffectVariantGetLocation).value;
+
           const outcome = await locationRequest(request);
           respond({ kind: "response", uuid, outcome });
           break;
@@ -242,9 +245,7 @@ const Home: NextPage = () => {
               />
             )}
           </div>
-          <p className="is-size-4">
-            {state.adminDistrict} ({state.outcode})
-          </p>
+          <p className="is-size-4">{state.location}</p>
           <div className="buttons section is-centered">
             <button
               className="button is-primary is-success"

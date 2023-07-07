@@ -24,5 +24,8 @@ pub struct Model {
     pub time: DateTime<Utc>,
     pub outcode: Option<String>,
     pub admin_district: Option<String>,
-    pub periods: Vec<Period>,
+    pub national: Vec<Period>,
+    pub national_updated: DateTime<Utc>,
+    pub local: Vec<Period>,
+    pub local_updated: DateTime<Utc>,
 }
