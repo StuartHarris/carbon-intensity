@@ -260,7 +260,7 @@ const Home: NextPage = () => {
   return (
     <>
       <Head>
-        <title>Next.js Carbon Intensity</title>
+        <title>Carbon Intensity</title>
       </Head>
 
       <main>
