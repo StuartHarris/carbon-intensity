@@ -11,7 +11,7 @@ targets:
   CarbonIntensity:
     type: application
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "16.0"
     sources:
       - CarbonIntensity
       - path: ../shared/src/shared.udl
@@ -28,6 +28,9 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UILaunchScreen: {}
+        NSLocationWhenInUseUsageDescription: |
+          This app needs to know your location to get the carbon intensity of
+          the grid in your area.
     settings:
       OTHER_LDFLAGS: [-w]
       SWIFT_OBJC_BRIDGING_HEADER: generated/sharedFFI.h

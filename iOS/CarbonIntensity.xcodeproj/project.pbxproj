@@ -3,18 +3,18 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 53;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4303160FD403CD4F218B09FA /* libshared_static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9A204703F2BD3AD9B8A72F85 /* libshared_static.a */; };
+		4303160FD403CD4F218B09FA /* libshared_static.a.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9A204703F2BD3AD9B8A72F85 /* libshared_static.a.a */; };
+		7ACDEC7BCDC3210D3C0CE716 /* CarbonIntensityApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 601415A1ADF8F6CD99A7C793 /* CarbonIntensityApp.swift */; };
+		93582A410B914CD7E046DDE0 /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37171F6C905E47EBA996E35D /* http.swift */; };
 		9F0856F5CA4E4BA4A8709787 /* SharedTypes in Frameworks */ = {isa = PBXBuildFile; productRef = 411075D4FD4A255EB5670512 /* SharedTypes */; };
 		A2D3554EB70409009442E8C3 /* shared.udl in Sources */ = {isa = PBXBuildFile; fileRef = F3C84275F015727CEE8F720C /* shared.udl */; };
-		A8938AC38E1939E9D0D02AC3 /* uniffi-bindgen in Resources */ = {isa = PBXBuildFile; fileRef = 869D1BF415D5C765E839553B /* uniffi-bindgen */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		CC4EA3272A59C48100454580 /* CarbonIntensityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4EA3242A59C48100454580 /* CarbonIntensityView.swift */; };
-		CC4EA3282A59C48100454580 /* http.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4EA3252A59C48100454580 /* http.swift */; };
-		CC4EA3292A59C48100454580 /* CarbonIntensityApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4EA3262A59C48100454580 /* CarbonIntensityApp.swift */; };
-		CC4EA32B2A59C74400454580 /* location.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4EA32A2A59C74400454580 /* location.swift */; };
+		A8938AC38E1939E9D0D02AC3 /* (null) in Resources */ = {isa = PBXBuildFile; fileRef = 869D1BF415D5C765E839553B; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B3AB214382F75A64E9DDA2FF /* location.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9512777799988D277499016A /* location.swift */; };
+		E15B1C822A1D6F26F6880162 /* CarbonIntensityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C552FEAF37B2B12D612D2F6D /* CarbonIntensityView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -23,8 +23,6 @@
 			compilerSpec = com.apple.compilers.proxy.script;
 			filePatterns = "*.udl";
 			fileType = pattern.proxy;
-			inputFiles = (
-			);
 			isEditable = 1;
 			name = "Generate FFI";
 			outputFiles = (
@@ -60,13 +58,6 @@
 			remoteGlobalIDString = CA606C6FC7DF8109328FB0D5;
 			remoteInfo = "uniffi-bindgen-bin";
 		};
-		CC4EA3222A59C32B00454580 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = D708FFAA0BA0DA2907FF0BCF /* Shared */;
-			proxyType = 2;
-			remoteGlobalIDString = CA60CDE1E0C810F7F7FCAC5B;
-			remoteInfo = "shared-cdylib";
-		};
 		E1677642E4AB4AC470D4AB36 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D708FFAA0BA0DA2907FF0BCF /* Shared */;
@@ -78,14 +69,14 @@
 
 /* Begin PBXFileReference section */
 		0BE312EB877896E5F27C4704 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		37171F6C905E47EBA996E35D /* http.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
+		601415A1ADF8F6CD99A7C793 /* CarbonIntensityApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbonIntensityApp.swift; sourceTree = "<group>"; };
 		6C87C60EB91D37AEA9CAAE2A /* SharedTypes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SharedTypes; path = ../shared_types/generated/swift/SharedTypes; sourceTree = SOURCE_ROOT; };
 		7A85402B05B73E40AA0AE9BD /* CarbonIntensity.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CarbonIntensity.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CC4EA3242A59C48100454580 /* CarbonIntensityView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CarbonIntensityView.swift; sourceTree = "<group>"; };
-		CC4EA3252A59C48100454580 /* http.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = http.swift; sourceTree = "<group>"; };
-		CC4EA3262A59C48100454580 /* CarbonIntensityApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CarbonIntensityApp.swift; sourceTree = "<group>"; };
-		CC4EA32A2A59C74400454580 /* location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = location.swift; sourceTree = "<group>"; };
+		9512777799988D277499016A /* location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = location.swift; sourceTree = "<group>"; };
+		C552FEAF37B2B12D612D2F6D /* CarbonIntensityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbonIntensityView.swift; sourceTree = "<group>"; };
 		D708FFAA0BA0DA2907FF0BCF /* Shared */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Shared; path = ../shared/shared.xcodeproj; sourceTree = "<group>"; };
-		F3C84275F015727CEE8F720C /* shared.udl */ = {isa = PBXFileReference; lastKnownFileType = text; path = shared.udl; sourceTree = "<group>"; };
+		F3C84275F015727CEE8F720C /* shared.udl */ = {isa = PBXFileReference; path = shared.udl; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,7 +84,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4303160FD403CD4F218B09FA /* libshared_static.a in Frameworks */,
+				4303160FD403CD4F218B09FA /* libshared_static.a.a in Frameworks */,
 				9F0856F5CA4E4BA4A8709787 /* SharedTypes in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -104,11 +95,11 @@
 		12C6D4EBD20801C3FB65E970 /* CarbonIntensity */ = {
 			isa = PBXGroup;
 			children = (
-				CC4EA3262A59C48100454580 /* CarbonIntensityApp.swift */,
-				CC4EA3242A59C48100454580 /* CarbonIntensityView.swift */,
-				CC4EA3252A59C48100454580 /* http.swift */,
-				CC4EA32A2A59C74400454580 /* location.swift */,
+				601415A1ADF8F6CD99A7C793 /* CarbonIntensityApp.swift */,
+				C552FEAF37B2B12D612D2F6D /* CarbonIntensityView.swift */,
+				37171F6C905E47EBA996E35D /* http.swift */,
 				0BE312EB877896E5F27C4704 /* Info.plist */,
+				9512777799988D277499016A /* location.swift */,
 			);
 			path = CarbonIntensity;
 			sourceTree = "<group>";
@@ -149,9 +140,8 @@
 		B564CA695FEBDC68C7F9D5FA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9A204703F2BD3AD9B8A72F85 /* libshared_static.a */,
-				CC4EA3232A59C32B00454580 /* shared.dylib */,
-				869D1BF415D5C765E839553B /* uniffi-bindgen */,
+				869D1BF415D5C765E839553B,
+				9A204703F2BD3AD9B8A72F85 /* libshared_static.a.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -199,8 +189,9 @@
 		6094BD2891C0C37BDA0B8EF1 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 1200;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = A423726D02E2ED45D4A2B8B4 /* Build configuration list for PBXProject "CarbonIntensity" */;
 			compatibilityVersion = "Xcode 11.0";
@@ -226,25 +217,16 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		869D1BF415D5C765E839553B /* uniffi-bindgen */ = {
+		869D1BF415D5C765E839553B = {
 			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.executable";
-			path = "uniffi-bindgen";
 			remoteRef = 8713072564338808B6C57C04 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		9A204703F2BD3AD9B8A72F85 /* libshared_static.a */ = {
+		9A204703F2BD3AD9B8A72F85 /* libshared_static.a.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
-			path = libshared_static.a;
+			path = libshared_static.a.a;
 			remoteRef = 057764F2F988F55A971981F1 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		CC4EA3232A59C32B00454580 /* shared.dylib */ = {
-			isa = PBXReferenceProxy;
-			fileType = "compiled.mach-o.dylib";
-			path = shared.dylib;
-			remoteRef = CC4EA3222A59C32B00454580 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
@@ -254,7 +236,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A8938AC38E1939E9D0D02AC3 /* uniffi-bindgen in Resources */,
+				A8938AC38E1939E9D0D02AC3 /* (null) in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -265,11 +247,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CC4EA3292A59C48100454580 /* CarbonIntensityApp.swift in Sources */,
+				7ACDEC7BCDC3210D3C0CE716 /* CarbonIntensityApp.swift in Sources */,
+				E15B1C822A1D6F26F6880162 /* CarbonIntensityView.swift in Sources */,
+				93582A410B914CD7E046DDE0 /* http.swift in Sources */,
+				B3AB214382F75A64E9DDA2FF /* location.swift in Sources */,
 				A2D3554EB70409009442E8C3 /* shared.udl in Sources */,
-				CC4EA32B2A59C74400454580 /* location.swift in Sources */,
-				CC4EA3272A59C48100454580 /* CarbonIntensityView.swift in Sources */,
-				CC4EA3282A59C48100454580 /* http.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -412,7 +394,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = CarbonIntensity/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -434,7 +416,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = CarbonIntensity/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

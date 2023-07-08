@@ -14,7 +14,7 @@ func locationRequest(_: LocationRequest) -> Result<LocationResponse, LocationErr
     case .restricted, .denied:
         return .failure(.message("need permission to get location"))
     default:
-        var currentLoc = locationManager.location
+        let currentLoc = locationManager.location
         if currentLoc != nil {
             let coord = Coordinate(
                 latitude: currentLoc!.coordinate.latitude,

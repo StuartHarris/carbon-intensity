@@ -18,10 +18,12 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs to know your location to get the carbon intensity of
+the grid in your area.
+</string>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Uses your location to request carbon intensity data for your area</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

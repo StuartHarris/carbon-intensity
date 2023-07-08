@@ -1,3 +1,4 @@
+import Charts
 import SharedTypes
 import SwiftUI
 
@@ -14,9 +15,20 @@ enum Message {
     case response(Uuid, Outcome)
 }
 
+extension DataPoint: Identifiable {
+    public typealias ID = String
+    public var id: String {
+        return date
+    }
+}
+
 @MainActor
 class Model: ObservableObject {
     @Published var view = ViewModel(national_name: "", national: [], local_name: "", local: [])
+    
+    init() {
+        update(msg: .event(.getNational))
+    }
     
     func update(msg: Message) {
         var requests: [Request]
@@ -42,11 +54,9 @@ class Model: ObservableObject {
         
         for request in requests {
             switch request.effect {
-                
             case .render: view = try! ViewModel.bincodeDeserialize(input: [UInt8](CarbonIntensity.view()))
                 
             case let .http(httpReq):
-                print(httpReq)
                 Task {
                     let res = try! await httpRequest(httpReq).get()
                     update(msg: .response(request.uuid, .http(res)))
@@ -90,11 +100,25 @@ struct ActionButton: View {
 
 struct ContentView: View {
     @ObservedObject var model: Model
+    
+    let formatter = ISO8601DateFormatter()
+
+    init(model: Model) {
+        self.model = model
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    }
         
     var body: some View {
         VStack {
             Text("Carbon Intensity").font(.headline)
             Text(model.view.local_name).padding()
+            Chart(model.view.national) {
+                LineMark(
+                    x: .value("gCO2/kWh", $0.forecast),
+                    // y: .value("Time", formatter.date(from: $0.date)!)
+                    y: .value("Time", $0.date)
+                )
+            }
             HStack {
                 ActionButton(label: "National", color: .yellow) {
                     model.update(msg: .event(.getNational))
