@@ -38,16 +38,16 @@ ChartJS.register(
 const zeroPad = (num: number, places: number) =>
   String(num).padStart(places, "0");
 
-const mixCategories: Record<string, [number, number[]]> = {
-  Coal: [0, [44, 42, 40]],
-  Gas: [1, [112, 48, 160]],
-  Other: [2, [172, 221, 170]],
-  Imports: [3, [235, 85, 110]],
-  Biomass: [4, [239, 133, 52]],
-  Nuclear: [5, [75, 138, 68]],
-  Hydro: [6, [57, 108, 203]],
-  Wind: [7, [79, 171, 213]],
-  Solar: [8, [247, 209, 71]],
+const mixCategories: Record<string, number[]> = {
+  Coal: [44, 42, 40],
+  Gas: [112, 48, 160],
+  Other: [172, 221, 170],
+  Imports: [235, 85, 110],
+  Biomass: [239, 133, 52],
+  Nuclear: [75, 138, 68],
+  Hydro: [57, 108, 203],
+  Wind: [79, 171, 213],
+  Solar: [247, 209, 71],
 };
 
 export const options = {
@@ -204,13 +204,9 @@ const Home: NextPage = () => {
               return acc;
             }, {});
           let datasets = Object.entries(mixPoints).map(([label, value]) => {
-            const color = mixCategories[label][1];
-            console.log(
-              label,
-              "0x" + color.map((c) => c.toString(16)).join("")
-            );
+            const color = mixCategories[label];
             return {
-              fill: mixCategories[label][0] === 0 ? "origin" : "-1",
+              fill: label === "Coal" ? "origin" : "-1",
               label,
               data: Object.values(value).map((point) => point.perc),
               borderColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
@@ -219,9 +215,6 @@ const Home: NextPage = () => {
               tension: 0.4,
             };
           });
-          datasets.sort(
-            (a, b) => mixCategories[a.label][0] - mixCategories[b.label][0]
-          );
           const mix_data = { labels, datasets };
 
           setState({
