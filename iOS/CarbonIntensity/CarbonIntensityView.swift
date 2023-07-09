@@ -15,16 +15,16 @@ enum Message {
     case response(Uuid, Outcome)
 }
 
-extension DataPoint: Identifiable {
-    public typealias ID = String
-    public var id: String {
-        return date
-    }
-}
-
 @MainActor
 class Model: ObservableObject {
-    @Published var view = ViewModel(national_name: "", national: [], local_name: "", local: [])
+    @Published var view = ViewModel(
+        national_name: "",
+        national_intensity: [],
+        national_mix: [],
+        local_name: "",
+        local_intensity: [],
+        local_mix: []
+    )
     
     init() {
         update(msg: .event(.getNational))
@@ -102,23 +102,75 @@ struct ContentView: View {
     @ObservedObject var model: Model
     
     let formatter = ISO8601DateFormatter()
+    
+    let fillColors: KeyValuePairs<String, Color> = [
+        "Coal": Color(hex: 0x2c2a28, alpha: 0.6),
+        "Gas": Color(hex: 0x7030a0, alpha: 0.6),
+        "Other": Color(hex: 0xacddaa, alpha: 0.6),
+        "Imports": Color(hex: 0xeb556e, alpha: 0.6),
+        "Biomass": Color(hex: 0xef8534, alpha: 0.6),
+        "Nuclear": Color(hex: 0x4b8a44, alpha: 0.6),
+        "Hydro": Color(hex: 0x396ccb, alpha: 0.6),
+        "Wind": Color(hex: 0x4fabd5, alpha: 0.6),
+        "Solar": Color(hex: 0xf7d147, alpha: 0.6)
+    ]
 
     init(model: Model) {
         self.model = model
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     }
-        
+    
+    private func formatDate(_ date: String) -> String {
+        let d = formatter.date(from: date)
+        if d != nil {
+            return d!.formatted(date: .omitted, time: .shortened)
+        } else { return "00:00" }
+    }
+    
     var body: some View {
-        VStack {
+        VStack
+        {
             Text("Carbon Intensity").font(.headline)
             Text(model.view.local_name).padding()
-            Chart(model.view.national) {
+            Chart(model.view.national_intensity) {
                 LineMark(
-                    x: .value("gCO2/kWh", $0.forecast),
-                    // y: .value("Time", formatter.date(from: $0.date)!)
-                    y: .value("Time", $0.date)
+                    x: .value("Time", $0.hh_mm),
+                    y: .value("gCO2/kWh", $0.forecast)
                 )
-            }
+            }.frame(height: 250)
+                .chartYScale(domain: 0...600)
+                .chartXAxis(content: {
+                    AxisMarks { value in
+                        AxisValueLabel {
+                            if let x = value.as(String.self) {
+                                if x.hasSuffix("00") {
+                                    Text(x)
+                                        .rotationEffect(Angle(degrees: 315))
+                                }
+                            }
+                        }
+                    }
+                })
+            Chart(model.view.national_mix) {
+                AreaMark(
+                    x: .value("Time", $0.hh_mm),
+                    y: .value("Percent", $0.perc)
+                ).foregroundStyle(by: .value("Fuel", $0.fuel))
+            }.frame(height: 250)
+                .chartYScale(domain: 0...100)
+                .chartXAxis(content: {
+                    AxisMarks { value in
+                        AxisValueLabel {
+                            if let x = value.as(String.self) {
+                                if x.hasSuffix("00") {
+                                    Text(x)
+                                        .rotationEffect(Angle(degrees: 315))
+                                }
+                            }
+                        }
+                    }
+                })
+                .chartForegroundStyleScale(fillColors)
             HStack {
                 ActionButton(label: "National", color: .yellow) {
                     model.update(msg: .event(.getNational))
@@ -134,5 +186,41 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView(model: Model())
+    }
+}
+
+extension IntensityPoint: Identifiable {
+    public typealias ID = String
+    public var id: String {
+        return date
+    }
+}
+
+extension GenerationMixPoint: Identifiable {
+    public typealias ID = String
+    public var id: String {
+        return date
+    }
+}
+
+extension String {
+    func capitalizingFirstLetter() -> String {
+        return prefix(1).capitalized + dropFirst()
+    }
+
+    mutating func capitalizeFirstLetter() {
+        self = capitalizingFirstLetter()
+    }
+}
+
+extension Color {
+    init(hex: UInt, alpha: Double = 1) {
+        self.init(
+            .sRGB,
+            red: Double((hex >> 16) & 0xff) / 255,
+            green: Double((hex >> 08) & 0xff) / 255,
+            blue: Double((hex >> 00) & 0xff) / 255,
+            opacity: alpha
+        )
     }
 }

@@ -4,13 +4,6 @@
       "from": "2023-07-04T23:30Z",
       "to": "2023-07-05T00:00Z",
       "generationmix": [
-        { "fuel": "biomass", "perc": 5.4 },
-        { "fuel": "coal", "perc": 0 },
-        { "fuel": "imports", "perc": 7.5 },
-        { "fuel": "gas", "perc": 41.2 },
-        { "fuel": "nuclear", "perc": 24.2 },
-        { "fuel": "other", "perc": 0 },
-        { "fuel": "hydro", "perc": 0.3 },
         { "fuel": "solar", "perc": 0 },
         { "fuel": "wind", "perc": 21.3 }
       ]
@@ -19,15 +12,8 @@
       "from": "2023-07-05T00:00Z",
       "to": "2023-07-05T00:30Z",
       "generationmix": [
-        { "fuel": "biomass", "perc": 5.3 },
-        { "fuel": "coal", "perc": 0 },
-        { "fuel": "imports", "perc": 7.6 },
         { "fuel": "gas", "perc": 41.1 },
-        { "fuel": "nuclear", "perc": 24.3 },
-        { "fuel": "other", "perc": 0 },
-        { "fuel": "hydro", "perc": 0.3 },
-        { "fuel": "solar", "perc": 0 },
-        { "fuel": "wind", "perc": 21.4 }
+        { "fuel": "nuclear", "perc": 24.3 }
       ]
     }
   ]

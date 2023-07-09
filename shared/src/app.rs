@@ -316,20 +316,6 @@ mod tests {
               actual: ~
               index: moderate
             generationmix:
-              - fuel: biomass
-                perc: 0
-              - fuel: coal
-                perc: 0
-              - fuel: imports
-                perc: 66.1
-              - fuel: gas
-                perc: 17.2
-              - fuel: nuclear
-                perc: 0
-              - fuel: other
-                perc: 0
-              - fuel: hydro
-                perc: 0.2
               - fuel: solar
                 perc: 0
               - fuel: wind
@@ -341,24 +327,10 @@ mod tests {
               actual: ~
               index: low
             generationmix:
-              - fuel: biomass
-                perc: 0
-              - fuel: coal
-                perc: 0
-              - fuel: imports
-                perc: 65.6
               - fuel: gas
                 perc: 16.1
               - fuel: nuclear
                 perc: 0
-              - fuel: other
-                perc: 0
-              - fuel: hydro
-                perc: 0.2
-              - fuel: solar
-                perc: 0.1
-              - fuel: wind
-                perc: 18
         last_updated: "2023-07-06T20:30:00Z"
         "###);
 
@@ -366,35 +338,35 @@ mod tests {
         insta::assert_yaml_snapshot!(app.view(&model), @r###"
         ---
         national_name: UK
-        national: []
+        national_intensity: []
+        national_mix: []
         local_name: "Kingston upon Thames, KT1"
-        local:
+        local_intensity:
           - date: "2023-07-04T23:30:00+00:00"
+            hh_mm: "23:30"
             forecast: 121
             actual: ~
-            mix:
-              gas: 17.2
-              coal: 0
-              biomass: 0
-              nuclear: 0
-              hydro: 0.2
-              imports: 66.1
-              other: 0
-              wind: 16.5
-              solar: 0
           - date: "2023-07-05T00:00:00+00:00"
+            hh_mm: "00:00"
             forecast: 116
             actual: ~
-            mix:
-              gas: 16.1
-              coal: 0
-              biomass: 0
-              nuclear: 0
-              hydro: 0.2
-              imports: 65.6
-              other: 0
-              wind: 18
-              solar: 0.1
+        local_mix:
+          - date: "2023-07-04T23:30:00+00:00"
+            hh_mm: "23:30"
+            fuel: Solar
+            perc: 0
+          - date: "2023-07-04T23:30:00+00:00"
+            hh_mm: "23:30"
+            fuel: Wind
+            perc: 16.5
+          - date: "2023-07-05T00:00:00+00:00"
+            hh_mm: "00:00"
+            fuel: Gas
+            perc: 16.1
+          - date: "2023-07-05T00:00:00+00:00"
+            hh_mm: "00:00"
+            fuel: Nuclear
+            perc: 0
         "###);
     }
 
@@ -523,20 +495,6 @@ mod tests {
               to: "2023-07-05T00:00:00Z"
               intensity: ~
               generationmix:
-                - fuel: biomass
-                  perc: 5.4
-                - fuel: coal
-                  perc: 0
-                - fuel: imports
-                  perc: 7.5
-                - fuel: gas
-                  perc: 41.2
-                - fuel: nuclear
-                  perc: 24.2
-                - fuel: other
-                  perc: 0
-                - fuel: hydro
-                  perc: 0.3
                 - fuel: solar
                   perc: 0
                 - fuel: wind
@@ -545,24 +503,10 @@ mod tests {
               to: "2023-07-05T00:30:00Z"
               intensity: ~
               generationmix:
-                - fuel: biomass
-                  perc: 5.3
-                - fuel: coal
-                  perc: 0
-                - fuel: imports
-                  perc: 7.6
                 - fuel: gas
                   perc: 41.1
                 - fuel: nuclear
                   perc: 24.3
-                - fuel: other
-                  perc: 0
-                - fuel: hydro
-                  perc: 0.3
-                - fuel: solar
-                  perc: 0
-                - fuel: wind
-                  perc: 21.4
         periods:
           - from: "2023-07-04T23:30:00Z"
             to: "2023-07-05T00:00:00Z"
@@ -585,35 +529,35 @@ mod tests {
         insta::assert_yaml_snapshot!(app.view(&model), @r###"
         ---
         national_name: UK
-        national:
+        national_intensity:
           - date: "2023-07-04T23:30:00+00:00"
+            hh_mm: "23:30"
             forecast: 142
             actual: 129
-            mix:
-              gas: 41.2
-              coal: 0
-              biomass: 5.4
-              nuclear: 24.2
-              hydro: 0.3
-              imports: 7.5
-              other: 0
-              wind: 21.3
-              solar: 0
           - date: "2023-07-05T00:00:00+00:00"
+            hh_mm: "00:00"
             forecast: 136
             actual: 122
-            mix:
-              gas: 41.1
-              coal: 0
-              biomass: 5.3
-              nuclear: 24.3
-              hydro: 0.3
-              imports: 7.6
-              other: 0
-              wind: 21.4
-              solar: 0
+        national_mix:
+          - date: "2023-07-04T23:30:00+00:00"
+            hh_mm: "23:30"
+            fuel: Solar
+            perc: 0
+          - date: "2023-07-04T23:30:00+00:00"
+            hh_mm: "23:30"
+            fuel: Wind
+            perc: 21.3
+          - date: "2023-07-05T00:00:00+00:00"
+            hh_mm: "00:00"
+            fuel: Gas
+            perc: 41.1
+          - date: "2023-07-05T00:00:00+00:00"
+            hh_mm: "00:00"
+            fuel: Nuclear
+            perc: 24.3
         local_name: Local
-        local: []
+        local_intensity: []
+        local_mix: []
         "###);
     }
 

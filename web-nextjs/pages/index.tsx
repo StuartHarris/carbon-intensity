@@ -38,6 +38,18 @@ ChartJS.register(
 const zeroPad = (num: number, places: number) =>
   String(num).padStart(places, "0");
 
+const mixCategories: Record<string, [number, number[]]> = {
+  Coal: [0, [44, 42, 40]],
+  Gas: [1, [112, 48, 160]],
+  Other: [2, [172, 221, 170]],
+  Imports: [3, [235, 85, 110]],
+  Biomass: [4, [239, 133, 52]],
+  Nuclear: [5, [75, 138, 68]],
+  Hydro: [6, [57, 108, 203]],
+  Wind: [7, [79, 171, 213]],
+  Solar: [8, [247, 209, 71]],
+};
+
 export const options = {
   responsive: true,
   maintainAspectRatio: false,
@@ -64,6 +76,21 @@ export const options = {
     title: {
       display: true,
       text: "Carbon Intensity",
+    },
+  },
+};
+const mix_options = {
+  ...options,
+  interaction: {
+    mode: "nearest",
+    axis: "x",
+    intersect: false,
+  },
+  scales: {
+    y: {
+      stacked: true,
+      min: 0,
+      max: 100,
     },
   },
 };
@@ -130,26 +157,30 @@ const Home: NextPage = () => {
     for (const { uuid, effect } of requests) {
       switch (effect.constructor) {
         case types.EffectVariantRender: {
-          let bytes = view();
-          let viewDeserializer = new bincode.BincodeDeserializer(bytes);
-          let viewModel = types.ViewModel.deserialize(viewDeserializer);
+          const bytes = view();
+          const viewDeserializer = new bincode.BincodeDeserializer(bytes);
+          const viewModel = types.ViewModel.deserialize(viewDeserializer);
 
-          const labels = (viewModel.national || viewModel.local || []).map(
-            (point) => {
-              const date = new Date(point.date);
-              return `${zeroPad(date.getHours(), 2)}:${zeroPad(
-                date.getMinutes(),
-                2
-              )}`;
-            }
-          );
-          let intensity_data = {
+          const labels = (
+            viewModel.national_intensity ||
+            viewModel.local_intensity ||
+            []
+          ).map((point) => {
+            const date = new Date(point.date);
+            return `${zeroPad(date.getHours(), 2)}:${zeroPad(
+              date.getMinutes(),
+              2
+            )}`;
+          });
+          const intensity_data = {
             labels,
             datasets: [
               {
                 fill: true,
                 label: `${viewModel.national_name} average`,
-                data: viewModel.national.map((point) => point.forecast),
+                data: viewModel.national_intensity.map(
+                  (point) => point.forecast
+                ),
                 borderColor: "rgb(53, 162, 235)",
                 backgroundColor: "rgba(53, 162, 235, 0.5)",
                 cubicInterpolationMode: "monotone",
@@ -158,53 +189,40 @@ const Home: NextPage = () => {
               {
                 fill: true,
                 label: viewModel.local_name,
-                data: viewModel.local.map((point) => point.forecast),
-                borderColor: "rgb(255,	205,	86)",
-                backgroundColor: "rgb(255,	205,	86, 0.5)",
+                data: viewModel.local_intensity.map((point) => point.forecast),
+                borderColor: "rgb(255, 205, 86)",
+                backgroundColor: "rgb(255, 205, 86, 0.5)",
                 cubicInterpolationMode: "monotone",
                 tension: 0.4,
               },
             ],
           };
-          let mix_options = {
-            ...options,
-            interaction: {
-              mode: "nearest",
-              axis: "x",
-              intersect: false,
-            },
-            scales: {
-              y: {
-                stacked: true,
-                min: 0,
-                max: 100,
-              },
-            },
-          };
-          let mix_data = {
-            labels,
-            datasets: [
-              ["coal", "Coal", [44, 42, 40]],
-              ["gas", "Gas", [112, 48, 160]],
-              ["other", "Other", [172, 221, 170]],
-              ["imports", "Imports", [235, 85, 110]],
-              ["biomass", "Biomass", [239, 133, 52]],
-              ["nuclear", "Nuclear", [75, 138, 68]],
-              ["hydro", "Hydro", [57, 108, 203]],
-              ["wind", "Wind", [79, 171, 213]],
-              ["solar", "Solar", [247, 209, 71]],
-            ].map(([type, label, color]: [string, string, number[]], i) => {
-              return {
-                fill: i === 0 ? "origin" : "-1",
-                label,
-                data: viewModel.national.map((point) => point.mix[type]),
-                borderColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
-                backgroundColor: `rgb(${color[0]}, ${color[1]}, ${color[2]}, 0.5)`,
-                cubicInterpolationMode: "monotone",
-                tension: 0.4,
-              };
-            }),
-          };
+          const mixPoints: Record<string, types.GenerationMixPoint> =
+            viewModel.national_mix.reduce(function (acc, point) {
+              acc[point.fuel] = acc[point.fuel] || [];
+              acc[point.fuel].push(point);
+              return acc;
+            }, {});
+          let datasets = Object.entries(mixPoints).map(([label, value]) => {
+            const color = mixCategories[label][1];
+            console.log(
+              label,
+              "0x" + color.map((c) => c.toString(16)).join("")
+            );
+            return {
+              fill: mixCategories[label][0] === 0 ? "origin" : "-1",
+              label,
+              data: Object.values(value).map((point) => point.perc),
+              borderColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+              backgroundColor: `rgb(${color[0]}, ${color[1]}, ${color[2]}, 0.5)`,
+              cubicInterpolationMode: "monotone",
+              tension: 0.4,
+            };
+          });
+          datasets.sort(
+            (a, b) => mixCategories[a.label][0] - mixCategories[b.label][0]
+          );
+          const mix_data = { labels, datasets };
 
           setState({
             local_name: viewModel.local_name,
