@@ -37,9 +37,16 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.patrykandpatrick.vico.compose.axis.horizontal.bottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.startAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
+import com.patrykandpatrick.vico.core.entry.FloatEntry
 import com.stuartharris.carbon.shared.handleResponse
 import com.stuartharris.carbon.shared.processEvent
 import com.stuartharris.carbon.shared.view
+import com.stuartharris.carbon.shared_types.Coordinate
 import com.stuartharris.carbon.shared_types.Effect
 import com.stuartharris.carbon.shared_types.HttpResponse
 import com.stuartharris.carbon.shared_types.LocationResponse
@@ -59,6 +66,7 @@ import kotlinx.coroutines.launch
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Optional
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.stuartharris.carbon.shared_types.Event as Evt
@@ -76,17 +84,14 @@ object AppModule {
     @Singleton
     fun providesFusedLocationProviderClient(
         application: Application
-    ): FusedLocationProviderClient =
-        LocationServices.getFusedLocationProviderClient(application)
+    ): FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(application)
 
     @Provides
     @Singleton
     fun providesLocationTracker(
-        fusedLocationProviderClient: FusedLocationProviderClient,
-        application: Application
+        fusedLocationProviderClient: FusedLocationProviderClient, application: Application
     ): LocationTracker = DefaultLocationTracker(
-        fusedLocationProviderClient = fusedLocationProviderClient,
-        application = application
+        fusedLocationProviderClient = fusedLocationProviderClient, application = application
     )
 }
 
@@ -98,8 +103,7 @@ class MainActivity : ComponentActivity() {
             CarbonIntensityTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     View()
                 }
@@ -121,17 +125,11 @@ sealed class CoreMessage {
 
 @HiltViewModel
 class Model @Inject constructor(
-    private val savedStateHandle: SavedStateHandle,
-    private val locationTracker: LocationTracker
+    private val savedStateHandle: SavedStateHandle, private val locationTracker: LocationTracker
 ) : ViewModel() {
     var view: MyViewModel by mutableStateOf(
         MyViewModel(
-            "",
-            emptyList(),
-            emptyList(),
-            "",
-            emptyList(),
-            emptyList()
+            "", emptyList(), emptyList(), "", emptyList(), emptyList()
         )
     )
         private set
@@ -140,11 +138,14 @@ class Model @Inject constructor(
 
     var currentLocation by mutableStateOf<Location?>(null)
 
+    var intensityChart: ChartEntryModelProducer = ChartEntryModelProducer()
+
     fun getCurrentLocation() {
         viewModelScope.launch {
             currentLocation = locationTracker.getCurrentLocation()
         }
     }
+
     init {
         viewModelScope.launch {
             update(CoreMessage.Event(Evt.GetNational()))
@@ -170,7 +171,10 @@ class Model @Inject constructor(
 
         for (req in requests) when (val effect = req.effect) {
             is Effect.Render -> {
-                this.view = MyViewModel.bincodeDeserialize(view())
+                view = MyViewModel.bincodeDeserialize(view())
+                intensityChart.setEntries(view.national_intensity.mapIndexed { i, it ->
+                    FloatEntry(i.toFloat(), it.forecast.toFloat())
+                })
             }
 
             is Effect.Http -> {
@@ -181,7 +185,12 @@ class Model @Inject constructor(
             }
 
             is Effect.GetLocation -> {
-//                update(CoreMessage.Response(req.uuid, Outcome.Location(LocationResponse(isoTime))))
+                val response = LocationResponse(
+                    Optional.of(
+                        Coordinate(currentLocation?.latitude, currentLocation?.longitude)
+                    )
+                )
+                update(CoreMessage.Response(req.uuid, Outcome.Location(response)))
             }
 
             is Effect.Time -> {
@@ -213,35 +222,7 @@ fun View(model: Model = viewModel()) {
     }
     val currentLocation = model.currentLocation
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        AnimatedContent(
-            targetState = locationPermissions.allPermissionsGranted
-        ) { areGranted ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (areGranted) {
-                    Text(text = "${currentLocation?.latitude ?: 0.0} ${currentLocation?.longitude ?: 0.0}")
-                    Button(
-                        onClick = { model.getCurrentLocation() }
-                    ) {
-                        Text(text = "Get current location")
-                    }
-                } else {
-                    Text(text = "We need location permissions for this application.")
-                    Button(
-                        onClick = { locationPermissions.launchMultiplePermissionRequest() }
-                    ) {
-                        Text(text = "Accept")
-                    }
-                }
-            }
-        }
-    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -253,21 +234,51 @@ fun View(model: Model = viewModel()) {
         Text(
             text = model.view.local_name, modifier = Modifier.padding(10.dp)
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(
-                onClick = {
-                    coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetNational())) }
-                }, colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.hsl(44F, 1F, 0.77F)
-                )
-            ) { Text(text = "National", color = Color.DarkGray) }
-            Button(
-                onClick = {
-                    coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetLocal())) }
-                }, colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.hsl(348F, 0.86F, 0.61F)
-                )
-            ) { Text(text = "Local", color = Color.White) }
+        Box(
+            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+        ) {
+            AnimatedContent(
+                targetState = locationPermissions.allPermissionsGranted
+            ) { areGranted ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Chart(
+                        chart = lineChart(),
+                        chartModelProducer = model.intensityChart,
+                        startAxis = startAxis(),
+                        bottomAxis = bottomAxis(),
+                    )
+                    if (areGranted) {
+                        Text(text = "${currentLocation?.latitude ?: 0.0} ${currentLocation?.longitude ?: 0.0}")
+                        Button(onClick = { model.getCurrentLocation() }) {
+                            Text(text = "Get current location")
+                        }
+                    } else {
+                        Text(text = "We need location permissions for this application.")
+                        Button(onClick = { locationPermissions.launchMultiplePermissionRequest() }) {
+                            Text(text = "Accept")
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = {
+                                coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetNational())) }
+                            }, colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.hsl(44F, 1F, 0.77F)
+                            )
+                        ) { Text(text = "National", color = Color.DarkGray) }
+                        Button(
+                            onClick = {
+                                coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetLocal())) }
+                            }, colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.hsl(348F, 0.86F, 0.61F)
+                            )
+                        ) { Text(text = "Local", color = Color.White) }
+                    }
+                }
+            }
         }
     }
 }

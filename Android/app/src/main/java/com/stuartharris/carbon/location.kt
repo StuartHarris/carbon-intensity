@@ -1,4 +1,6 @@
 // see https://medium.com/@daniel.atitienei/get-current-user-location-in-jetpack-compose-using-clean-architecture-android-6683abca66c9
+//
+// to send location to emulator: `adb emu geo fix -0.298302 51.403366`
 package com.stuartharris.carbon
 
 import android.app.Application
