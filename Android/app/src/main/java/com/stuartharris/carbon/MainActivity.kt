@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,7 +31,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,12 +38,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.patrykandpatrick.vico.compose.axis.horizontal.bottomAxis
-import com.patrykandpatrick.vico.compose.axis.vertical.startAxis
-import com.patrykandpatrick.vico.compose.chart.Chart
-import com.patrykandpatrick.vico.compose.chart.line.lineChart
-import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
-import com.patrykandpatrick.vico.core.entry.FloatEntry
+import com.stuartharris.carbon.chart.LineChart
 import com.stuartharris.carbon.shared.handleResponse
 import com.stuartharris.carbon.shared.processEvent
 import com.stuartharris.carbon.shared.view
@@ -125,7 +121,7 @@ sealed class CoreMessage {
 
 @HiltViewModel
 class Model @Inject constructor(
-    private val savedStateHandle: SavedStateHandle, private val locationTracker: LocationTracker
+    private val locationTracker: LocationTracker
 ) : ViewModel() {
     var view: MyViewModel by mutableStateOf(
         MyViewModel(
@@ -138,7 +134,7 @@ class Model @Inject constructor(
 
     var currentLocation by mutableStateOf<Location?>(null)
 
-    var intensityChart: ChartEntryModelProducer = ChartEntryModelProducer()
+//    var pointsData: List<Point> = emptyList()
 
     fun getCurrentLocation() {
         viewModelScope.launch {
@@ -172,9 +168,6 @@ class Model @Inject constructor(
         for (req in requests) when (val effect = req.effect) {
             is Effect.Render -> {
                 view = MyViewModel.bincodeDeserialize(view())
-                intensityChart.setEntries(view.national_intensity.mapIndexed { i, it ->
-                    FloatEntry(i.toFloat(), it.forecast.toFloat())
-                })
             }
 
             is Effect.Http -> {
@@ -222,7 +215,6 @@ fun View(model: Model = viewModel()) {
     }
     val currentLocation = model.currentLocation
 
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -237,46 +229,53 @@ fun View(model: Model = viewModel()) {
         Box(
             modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
         ) {
-            AnimatedContent(
-                targetState = locationPermissions.allPermissionsGranted
-            ) { areGranted ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Chart(
-                        chart = lineChart(),
-                        chartModelProducer = model.intensityChart,
-                        startAxis = startAxis(),
-                        bottomAxis = bottomAxis(),
+            val yStep = 100
+            val points = model.view.national_intensity.map { it.forecast.toFloat() }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row {
+                    LineChart(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp),
+                        xValues = (0..47).map { it + 1 },
+                        yValues = (0..5).map { (it + 1) * yStep },
+                        points = points,
+                        paddingSpace = 16.dp,
+                        verticalStep = yStep
                     )
-                    if (areGranted) {
-                        Text(text = "${currentLocation?.latitude ?: 0.0} ${currentLocation?.longitude ?: 0.0}")
-                        Button(onClick = { model.getCurrentLocation() }) {
-                            Text(text = "Get current location")
-                        }
-                    } else {
-                        Text(text = "We need location permissions for this application.")
-                        Button(onClick = { locationPermissions.launchMultiplePermissionRequest() }) {
-                            Text(text = "Accept")
+                }
+                Row {
+                    AnimatedContent(
+                        targetState = locationPermissions.allPermissionsGranted
+                    ) { areGranted ->
+                        if (!areGranted) {
+                            Column {
+                                Text(text = "We need location permissions for this application.")
+                                Button(onClick = { locationPermissions.launchMultiplePermissionRequest() }) {
+                                    Text(text = "Accept")
+                                }
+                            }
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button(
-                            onClick = {
-                                coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetNational())) }
-                            }, colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.hsl(44F, 1F, 0.77F)
-                            )
-                        ) { Text(text = "National", color = Color.DarkGray) }
-                        Button(
-                            onClick = {
-                                coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetLocal())) }
-                            }, colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.hsl(348F, 0.86F, 0.61F)
-                            )
-                        ) { Text(text = "Local", color = Color.White) }
-                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = {
+                            coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetNational())) }
+                        }, colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.hsl(44F, 1F, 0.77F)
+                        )
+                    ) { Text(text = "National", color = Color.DarkGray) }
+                    Button(
+                        onClick = {
+                            coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetLocal())) }
+                        }, colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.hsl(348F, 0.86F, 0.61F)
+                        )
+                    ) { Text(text = "Local", color = Color.White) }
                 }
             }
         }
@@ -285,7 +284,7 @@ fun View(model: Model = viewModel()) {
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun Preview() {
     CarbonIntensityTheme {
         View()
     }
