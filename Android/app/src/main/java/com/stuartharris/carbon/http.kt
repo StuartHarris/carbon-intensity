@@ -1,8 +1,8 @@
 package com.stuartharris.carbon
 
-import com.example.counter.shared_types.HttpHeader
-import com.example.counter.shared_types.HttpRequest
-import com.example.counter.shared_types.HttpResponse
+import com.stuartharris.carbon.shared_types.HttpHeader
+import com.stuartharris.carbon.shared_types.HttpRequest
+import com.stuartharris.carbon.shared_types.HttpResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.headers

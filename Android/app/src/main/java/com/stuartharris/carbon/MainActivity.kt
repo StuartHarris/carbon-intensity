@@ -1,9 +1,13 @@
 package com.stuartharris.carbon
 
+import android.app.Application
+import android.location.Location
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,23 +29,68 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.stuartharris.carbon.shared.handleResponse
 import com.stuartharris.carbon.shared.processEvent
 import com.stuartharris.carbon.shared.view
 import com.stuartharris.carbon.shared_types.Effect
 import com.stuartharris.carbon.shared_types.HttpResponse
+import com.stuartharris.carbon.shared_types.LocationResponse
 import com.stuartharris.carbon.shared_types.Requests
+import com.stuartharris.carbon.shared_types.TimeResponse
 import com.stuartharris.carbon.ui.theme.CarbonIntensityTheme
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.HiltAndroidApp
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.launch
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import javax.inject.Inject
+import javax.inject.Singleton
 import com.stuartharris.carbon.shared_types.Event as Evt
 import com.stuartharris.carbon.shared_types.Request as Req
 import com.stuartharris.carbon.shared_types.ViewModel as MyViewModel
 
+@HiltAndroidApp
+class CarbonIntensityApplication : Application()
+
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+
+    @Provides
+    @Singleton
+    fun providesFusedLocationProviderClient(
+        application: Application
+    ): FusedLocationProviderClient =
+        LocationServices.getFusedLocationProviderClient(application)
+
+    @Provides
+    @Singleton
+    fun providesLocationTracker(
+        fusedLocationProviderClient: FusedLocationProviderClient,
+        application: Application
+    ): LocationTracker = DefaultLocationTracker(
+        fusedLocationProviderClient = fusedLocationProviderClient,
+        application = application
+    )
+}
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +110,8 @@ class MainActivity : ComponentActivity() {
 
 sealed class Outcome {
     data class Http(val res: HttpResponse) : Outcome()
+    data class Location(val res: LocationResponse) : Outcome()
+    data class Time(val res: TimeResponse) : Outcome()
 }
 
 sealed class CoreMessage {
@@ -67,12 +119,32 @@ sealed class CoreMessage {
     data class Response(val uuid: List<Byte>, val outcome: Outcome) : CoreMessage()
 }
 
-class Model : ViewModel() {
-    var view: MyViewModel by mutableStateOf(MyViewModel("", null, null, "", null, null))
+@HiltViewModel
+class Model @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
+    private val locationTracker: LocationTracker
+) : ViewModel() {
+    var view: MyViewModel by mutableStateOf(
+        MyViewModel(
+            "",
+            emptyList(),
+            emptyList(),
+            "",
+            emptyList(),
+            emptyList()
+        )
+    )
         private set
 
     private val httpClient = HttpClient(CIO)
 
+    var currentLocation by mutableStateOf<Location?>(null)
+
+    fun getCurrentLocation() {
+        viewModelScope.launch {
+            currentLocation = locationTracker.getCurrentLocation()
+        }
+    }
     init {
         viewModelScope.launch {
             update(CoreMessage.Event(Evt.GetNational()))
@@ -89,6 +161,8 @@ class Model : ViewModel() {
                 handleResponse(
                     msg.uuid.toByteArray(), when (msg.outcome) {
                         is Outcome.Http -> msg.outcome.res.bincodeSerialize()
+                        is Outcome.Location -> msg.outcome.res.bincodeSerialize()
+                        is Outcome.Time -> msg.outcome.res.bincodeSerialize()
                     }
                 )
             )
@@ -105,13 +179,69 @@ class Model : ViewModel() {
                 )
                 update(CoreMessage.Response(req.uuid, Outcome.Http(response)))
             }
+
+            is Effect.GetLocation -> {
+//                update(CoreMessage.Response(req.uuid, Outcome.Location(LocationResponse(isoTime))))
+            }
+
+            is Effect.Time -> {
+                val isoTime =
+                    ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+
+                update(CoreMessage.Response(req.uuid, Outcome.Time(TimeResponse(isoTime))))
+            }
         }
     }
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun View(model: Model = viewModel()) {
     val coroutineScope = rememberCoroutineScope()
+
+    val locationPermissions = rememberMultiplePermissionsState(
+        permissions = listOf(
+            android.Manifest.permission.ACCESS_COARSE_LOCATION,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        )
+    )
+
+    LaunchedEffect(key1 = locationPermissions.allPermissionsGranted) {
+        if (locationPermissions.allPermissionsGranted) {
+            model.getCurrentLocation()
+        }
+    }
+    val currentLocation = model.currentLocation
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        AnimatedContent(
+            targetState = locationPermissions.allPermissionsGranted
+        ) { areGranted ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (areGranted) {
+                    Text(text = "${currentLocation?.latitude ?: 0.0} ${currentLocation?.longitude ?: 0.0}")
+                    Button(
+                        onClick = { model.getCurrentLocation() }
+                    ) {
+                        Text(text = "Get current location")
+                    }
+                } else {
+                    Text(text = "We need location permissions for this application.")
+                    Button(
+                        onClick = { locationPermissions.launchMultiplePermissionRequest() }
+                    ) {
+                        Text(text = "Accept")
+                    }
+                }
+            }
+        }
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
