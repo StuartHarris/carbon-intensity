@@ -1,4 +1,4 @@
-package com.example.counter.shared_types;
+package com.stuartharris.carbon.shared_types;
 
 
 public final class Coordinate {

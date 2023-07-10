@@ -1,4 +1,4 @@
-package com.example.counter.shared_types;
+package com.stuartharris.carbon.shared_types;
 
 final class TraitHelpers {
     static void serialize_option_Coordinate(java.util.Optional<Coordinate> value, com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
