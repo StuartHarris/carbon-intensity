@@ -128,11 +128,14 @@ struct ContentView: View {
     }
     
     var body: some View {
-        VStack
-        {
+        VStack {
             Text("Carbon Intensity").font(.headline)
             Text(model.view.local_name).padding()
             Chart(model.view.national_intensity) {
+                AreaMark(
+                    x: .value("Time", $0.hh_mm),
+                    y: .value("gCO2/kWh", $0.forecast)
+                ).opacity(0.5)
                 LineMark(
                     x: .value("Time", $0.hh_mm),
                     y: .value("gCO2/kWh", $0.forecast)
