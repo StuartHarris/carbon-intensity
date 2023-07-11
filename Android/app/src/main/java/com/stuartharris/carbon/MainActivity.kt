@@ -38,7 +38,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.stuartharris.carbon.chart.LineChart
+import com.stuartharris.carbon.chart.IntensityChart
 import com.stuartharris.carbon.shared.handleResponse
 import com.stuartharris.carbon.shared.processEvent
 import com.stuartharris.carbon.shared.view
@@ -213,7 +213,6 @@ fun View(model: Model = viewModel()) {
             model.getCurrentLocation()
         }
     }
-    val currentLocation = model.currentLocation
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -229,22 +228,16 @@ fun View(model: Model = viewModel()) {
         Box(
             modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
         ) {
-            val yStep = 100
-            val points = model.view.national_intensity.map { it.forecast.toFloat() }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row {
-                    LineChart(
+                    IntensityChart(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp),
-                        xValues = (0..47).map { it + 1 },
-                        yValues = (0..5).map { (it + 1) * yStep },
-                        points = points,
-                        paddingSpace = 16.dp,
-                        verticalStep = yStep
+                        points = model.view.national_intensity,
                     )
                 }
                 Row {
