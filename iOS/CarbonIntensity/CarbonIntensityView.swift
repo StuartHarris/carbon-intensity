@@ -101,7 +101,8 @@ struct ActionButton: View {
 struct ContentView: View {
     @ObservedObject var model: Model
     
-    let formatter = ISO8601DateFormatter()
+    let isoFormatter = ISO8601DateFormatter()
+    let timeFormatter = DateFormatter()
     
     let fillColors: KeyValuePairs<String, Color> = [
         "Coal": Color(hex: 0x2c2a28, alpha: 0.6),
@@ -117,13 +118,13 @@ struct ContentView: View {
 
     init(model: Model) {
         self.model = model
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        timeFormatter.dateFormat = "HH:mm"
     }
     
     private func formatDate(_ date: String) -> String {
-        let d = formatter.date(from: date)
+        let d = isoFormatter.date(from: date)
         if d != nil {
-            return d!.formatted(date: .omitted, time: .shortened)
+            return timeFormatter.string(from: d!)
         } else { return "00:00" }
     }
     
@@ -133,11 +134,11 @@ struct ContentView: View {
             Text(model.view.local_name).padding()
             Chart(model.view.national_intensity) {
                 AreaMark(
-                    x: .value("Time", $0.hh_mm),
+                    x: .value("Time", $0.date),
                     y: .value("gCO2/kWh", $0.forecast)
                 ).opacity(0.5)
                 LineMark(
-                    x: .value("Time", $0.hh_mm),
+                    x: .value("Time", $0.date),
                     y: .value("gCO2/kWh", $0.forecast)
                 )
             }.frame(height: 250)
@@ -145,18 +146,17 @@ struct ContentView: View {
                 .chartXAxis(content: {
                     AxisMarks { value in
                         AxisValueLabel {
-                            if let x = value.as(String.self) {
-                                if x.hasSuffix("00") {
-                                    Text(x)
-                                        .rotationEffect(Angle(degrees: 315))
-                                }
+                            let x = formatDate(value.as(String.self)!);
+                            if x.hasSuffix("00") {
+                                Text(x)
+                                    .rotationEffect(Angle(degrees: -45))
                             }
                         }
                     }
                 })
             Chart(model.view.national_mix) {
                 AreaMark(
-                    x: .value("Time", $0.hh_mm),
+                    x: .value("Time", $0.date),
                     y: .value("Percent", $0.perc)
                 ).foregroundStyle(by: .value("Fuel", $0.fuel))
             }.frame(height: 250)
@@ -164,11 +164,10 @@ struct ContentView: View {
                 .chartXAxis(content: {
                     AxisMarks { value in
                         AxisValueLabel {
-                            if let x = value.as(String.self) {
-                                if x.hasSuffix("00") {
-                                    Text(x)
-                                        .rotationEffect(Angle(degrees: 315))
-                                }
+                            let x = formatDate(value.as(String.self)!);
+                            if x.hasSuffix("00") {
+                                Text(x)
+                                    .rotationEffect(Angle(degrees: -45))
                             }
                         }
                     }

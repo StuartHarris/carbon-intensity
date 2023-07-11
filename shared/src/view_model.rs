@@ -20,7 +20,6 @@ pub struct ViewModel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntensityPoint {
     pub date: String,
-    pub hh_mm: String,
     pub forecast: i32,
     pub actual: Option<i32>,
 }
@@ -28,7 +27,6 @@ pub struct IntensityPoint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenerationMixPoint {
     pub date: String,
-    pub hh_mm: String,
     pub fuel: String,
     #[serde(rename = "perc")]
     pub percentage: f32,
@@ -128,7 +126,6 @@ impl From<Period> for IntensityPoint {
     fn from(value: Period) -> Self {
         IntensityPoint {
             date: value.from.to_rfc3339(),
-            hh_mm: value.from.format("%H:%M").to_string(),
             forecast: value
                 .intensity
                 .clone()
@@ -143,7 +140,6 @@ impl From<(Period, GenerationMix)> for GenerationMixPoint {
     fn from(value: (Period, GenerationMix)) -> Self {
         GenerationMixPoint {
             date: value.0.from.to_rfc3339(),
-            hh_mm: value.0.from.format("%H:%M").to_string(),
             fuel: uppercase_first(&value.1.fuel),
             percentage: value.1.percentage,
         }

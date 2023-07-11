@@ -343,28 +343,22 @@ mod tests {
         local_name: "Kingston upon Thames, KT1"
         local_intensity:
           - date: "2023-07-04T23:30:00+00:00"
-            hh_mm: "23:30"
             forecast: 121
             actual: ~
           - date: "2023-07-05T00:00:00+00:00"
-            hh_mm: "00:00"
             forecast: 116
             actual: ~
         local_mix:
           - date: "2023-07-05T00:00:00+00:00"
-            hh_mm: "00:00"
             fuel: Gas
             perc: 16.1
           - date: "2023-07-05T00:00:00+00:00"
-            hh_mm: "00:00"
             fuel: Nuclear
             perc: 0
           - date: "2023-07-04T23:30:00+00:00"
-            hh_mm: "23:30"
             fuel: Wind
             perc: 16.5
           - date: "2023-07-04T23:30:00+00:00"
-            hh_mm: "23:30"
             fuel: Solar
             perc: 0
         "###);
@@ -531,28 +525,22 @@ mod tests {
         national_name: UK
         national_intensity:
           - date: "2023-07-04T23:30:00+00:00"
-            hh_mm: "23:30"
             forecast: 142
             actual: 129
           - date: "2023-07-05T00:00:00+00:00"
-            hh_mm: "00:00"
             forecast: 136
             actual: 122
         national_mix:
           - date: "2023-07-05T00:00:00+00:00"
-            hh_mm: "00:00"
             fuel: Gas
             perc: 41.1
           - date: "2023-07-05T00:00:00+00:00"
-            hh_mm: "00:00"
             fuel: Nuclear
             perc: 24.3
           - date: "2023-07-04T23:30:00+00:00"
-            hh_mm: "23:30"
             fuel: Wind
             perc: 21.3
           - date: "2023-07-04T23:30:00+00:00"
-            hh_mm: "23:30"
             fuel: Solar
             perc: 0
         local_name: Local
