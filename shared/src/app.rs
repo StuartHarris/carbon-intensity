@@ -321,6 +321,8 @@ mod tests {
                 perc: 0
               - fuel: wind
                 perc: 16.5
+              - fuel: other
+                perc: 0
           - from: "2023-07-05T00:00:00Z"
             to: "2023-07-05T00:30:00Z"
             intensity:
@@ -494,6 +496,8 @@ mod tests {
                   perc: 0
                 - fuel: wind
                   perc: 21.3
+                - fuel: other
+                  perc: 0
             - from: "2023-07-05T00:00:00Z"
               to: "2023-07-05T00:30:00Z"
               intensity: ~

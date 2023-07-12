@@ -11,7 +11,8 @@
         "intensity": { "forecast": 121, "index": "moderate" },
         "generationmix": [
           { "fuel": "solar", "perc": 0 },
-          { "fuel": "wind", "perc": 16.5 }
+          { "fuel": "wind", "perc": 16.5 },
+          { "fuel": "other", "perc": 0 }
         ]
       },
       {

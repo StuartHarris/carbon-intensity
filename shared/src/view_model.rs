@@ -35,7 +35,7 @@ pub struct GenerationMixPoint {
 impl From<&Model> for ViewModel {
     fn from(value: &Model) -> Self {
         let mix_order: HashMap<String, u8> = [
-            "Coal", "Gas", "Other", "Imports", "Biomass", "Nuclear", "Hydro", "Wind", "Solar",
+            "Coal", "Gas", "Imports", "Biomass", "Nuclear", "Hydro", "Wind", "Solar",
         ]
         .iter()
         .cloned()
@@ -61,6 +61,7 @@ impl From<&Model> for ViewModel {
                             .map(move |mix| GenerationMixPoint::from((period.clone(), mix)))
                     })
             })
+            .filter(|m| m.fuel != "Other")
             .collect();
         national_mix.sort_by(|a, b| mix_order[&a.fuel].cmp(&mix_order[&b.fuel]));
 
@@ -108,6 +109,7 @@ impl From<&Model> for ViewModel {
                             .map(move |mix| GenerationMixPoint::from((period.clone(), mix)))
                     })
             })
+            .filter(|m| m.fuel != "Other")
             .collect();
         local_mix.sort_by(|a, b| mix_order[&a.fuel].cmp(&mix_order[&b.fuel]));
 

@@ -25,14 +25,14 @@ class Model: ObservableObject {
         local_intensity: [],
         local_mix: []
     )
-    
+
     init() {
         update(msg: .event(.getNational))
     }
-    
+
     func update(msg: Message) {
         var requests: [Request]
-        
+
         switch msg {
         case let .event(event):
             requests = try! .bincodeDeserialize(
@@ -51,20 +51,20 @@ class Model: ObservableObject {
                 input: [UInt8](handleResponse(Data(uuid), Data(try! response.bincodeSerialize())))
             )
         }
-        
+
         for request in requests {
             switch request.effect {
             case .render: view = try! ViewModel.bincodeDeserialize(input: [UInt8](CarbonIntensity.view()))
-                
+
             case let .http(httpReq):
                 Task {
                     let res = try! await httpRequest(httpReq).get()
                     update(msg: .response(request.uuid, .http(res)))
                 }
-                
+
             case .time:
                 update(msg: .response(request.uuid, .time(TimeResponse(value: Date().ISO8601Format()))))
-                
+
             case let .getLocation(req):
                 let res = try! locationRequest(req).get()
                 update(msg: .response(request.uuid, .location(res)))
@@ -72,18 +72,18 @@ class Model: ObservableObject {
         }
     }
 }
-    
+
 struct ActionButton: View {
     var label: String
     var color: Color
     var action: () -> Void
-        
+
     init(label: String, color: Color, action: @escaping () -> Void) {
         self.label = label
         self.color = color
         self.action = action
     }
-        
+
     var body: some View {
         Button(action: action) {
             Text(label)
@@ -100,34 +100,33 @@ struct ActionButton: View {
 
 struct ContentView: View {
     @ObservedObject var model: Model
-    
+
     let isoFormatter = ISO8601DateFormatter()
     let timeFormatter = DateFormatter()
-    
+
     let fillColors: KeyValuePairs<String, Color> = [
-        "Coal": Color(hex: 0x2c2a28, alpha: 0.6),
-        "Gas": Color(hex: 0x7030a0, alpha: 0.6),
-        "Other": Color(hex: 0xacddaa, alpha: 0.6),
-        "Imports": Color(hex: 0xeb556e, alpha: 0.6),
-        "Biomass": Color(hex: 0xef8534, alpha: 0.6),
-        "Nuclear": Color(hex: 0x4b8a44, alpha: 0.6),
-        "Hydro": Color(hex: 0x396ccb, alpha: 0.6),
-        "Wind": Color(hex: 0x4fabd5, alpha: 0.6),
-        "Solar": Color(hex: 0xf7d147, alpha: 0.6)
+        "Coal": Color(hex: 0x2C2A28, alpha: 0.6),
+        "Gas": Color(hex: 0x7030A0, alpha: 0.6),
+        "Imports": Color(hex: 0xEB556E, alpha: 0.6),
+        "Biomass": Color(hex: 0xEF8534, alpha: 0.6),
+        "Nuclear": Color(hex: 0x4B8A44, alpha: 0.6),
+        "Hydro": Color(hex: 0x396CCB, alpha: 0.6),
+        "Wind": Color(hex: 0x4FABD5, alpha: 0.6),
+        "Solar": Color(hex: 0xF7D147, alpha: 0.6),
     ]
 
     init(model: Model) {
         self.model = model
         timeFormatter.dateFormat = "HH:mm"
     }
-    
+
     private func formatDate(_ date: String) -> String {
         let d = isoFormatter.date(from: date)
         if d != nil {
             return timeFormatter.string(from: d!)
         } else { return "00:00" }
     }
-    
+
     var body: some View {
         VStack {
             Text("Carbon Intensity").font(.headline)
@@ -142,11 +141,11 @@ struct ContentView: View {
                     y: .value("gCO2/kWh", $0.forecast)
                 )
             }.frame(height: 250)
-                .chartYScale(domain: 0...600)
+                .chartYScale(domain: 0 ... 600)
                 .chartXAxis(content: {
                     AxisMarks { value in
                         AxisValueLabel {
-                            let x = formatDate(value.as(String.self)!);
+                            let x = formatDate(value.as(String.self)!)
                             if x.hasSuffix("00") {
                                 Text(x)
                                     .rotationEffect(Angle(degrees: -45))
@@ -160,11 +159,11 @@ struct ContentView: View {
                     y: .value("Percent", $0.perc)
                 ).foregroundStyle(by: .value("Fuel", $0.fuel))
             }.frame(height: 250)
-                .chartYScale(domain: 0...100)
+                .chartYScale(domain: 0 ... 100)
                 .chartXAxis(content: {
                     AxisMarks { value in
                         AxisValueLabel {
-                            let x = formatDate(value.as(String.self)!);
+                            let x = formatDate(value.as(String.self)!)
                             if x.hasSuffix("00") {
                                 Text(x)
                                     .rotationEffect(Angle(degrees: -45))
@@ -184,7 +183,7 @@ struct ContentView: View {
         }
     }
 }
-    
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView(model: Model())
@@ -219,9 +218,9 @@ extension Color {
     init(hex: UInt, alpha: Double = 1) {
         self.init(
             .sRGB,
-            red: Double((hex >> 16) & 0xff) / 255,
-            green: Double((hex >> 08) & 0xff) / 255,
-            blue: Double((hex >> 00) & 0xff) / 255,
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 08) & 0xFF) / 255,
+            blue: Double((hex >> 00) & 0xFF) / 255,
             opacity: alpha
         )
     }

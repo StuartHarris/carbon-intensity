@@ -9,9 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment.Companion.Center
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asComposePath
@@ -28,6 +28,8 @@ import com.stuartharris.carbon.shared_types.IntensityPoint
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+
+val color = Color(140, 186, 249, 255)
 
 @OptIn(ExperimentalTextApi::class)
 @Composable
@@ -99,15 +101,10 @@ fun IntensityChart(
                 }
                 drawPath(
                     fillPath,
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color(0xff4fabd5),
-                            Color.Transparent,
-                        )
-                    ),
+                    brush = SolidColor(Color(color.red, color.green, color.blue, 0.6f)),
                 )
                 drawPath(
-                    stroke, color = Color(0x884fabd5), style = Stroke(
+                    stroke, color, style = Stroke(
                         width = 4f, cap = StrokeCap.Round
                     )
                 )
@@ -119,7 +116,7 @@ fun IntensityChart(
                         .format(DateTimeFormatter.ofPattern("HH:mm"))
                     val textLayoutResult = textMeasurer.measure(
                         text = AnnotatedString(text),
-                        style = TextStyle(fontSize = 10.sp, color = Color.Black)
+                        style = TextStyle(fontSize = 10.sp, color = Color.DarkGray)
                     )
                     val textSize = textLayoutResult.size
 
@@ -133,7 +130,7 @@ fun IntensityChart(
                         )
                     }
                     drawLine(
-                        Color.LightGray, pivot, Offset(lineX, 0f)
+                        Color.LightGray, Offset(lineX, size.height), Offset(lineX, 0f)
                     )
                 }
 
@@ -142,7 +139,7 @@ fun IntensityChart(
                     val text = i.toString()
                     val textLayoutResult = textMeasurer.measure(
                         text = AnnotatedString(text),
-                        style = TextStyle(fontSize = 10.sp, color = Color.Black)
+                        style = TextStyle(fontSize = 10.sp, color = Color.DarkGray)
                     )
                     val textSize = textLayoutResult.size
 
@@ -150,7 +147,7 @@ fun IntensityChart(
                     if (i > 0) {
                         drawText(
                             textLayoutResult = textLayoutResult,
-                            topLeft = Offset(0f - textSize.width / 2, lineY - textSize.height / 2),
+                            topLeft = Offset(0f - textSize.width, lineY - textSize.height / 2),
                         )
                     }
                     drawLine(

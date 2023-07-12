@@ -41,7 +41,6 @@ const zeroPad = (num: number, places: number) =>
 const mixCategories: Record<string, number[]> = {
   Coal: [44, 42, 40],
   Gas: [112, 48, 160],
-  Other: [172, 221, 170],
   Imports: [235, 85, 110],
   Biomass: [239, 133, 52],
   Nuclear: [75, 138, 68],

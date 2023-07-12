@@ -5,7 +5,8 @@
       "to": "2023-07-05T00:00Z",
       "generationmix": [
         { "fuel": "solar", "perc": 0 },
-        { "fuel": "wind", "perc": 21.3 }
+        { "fuel": "wind", "perc": 21.3 },
+        { "fuel": "other", "perc": 0 }
       ]
     },
     {

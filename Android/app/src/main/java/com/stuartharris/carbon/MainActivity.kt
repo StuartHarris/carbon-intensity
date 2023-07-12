@@ -237,13 +237,15 @@ fun View(model: Model = viewModel()) {
                     IntensityChart(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(300.dp),
+                            .height(300.dp)
+                            .padding(vertical = 4.dp),
                         points = model.view.national_intensity,
                     )
                     MixChart(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(300.dp),
+                            .height(300.dp)
+                            .padding(vertical = 4.dp),
                         points = model.view.national_mix,
                     )
                 }

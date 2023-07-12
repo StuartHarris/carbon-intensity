@@ -11,7 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.AnnotatedString
@@ -25,6 +29,17 @@ import com.stuartharris.carbon.shared_types.GenerationMixPoint
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+
+val colors = hashMapOf(
+    "Coal" to Color(0xff2c2a28),
+    "Gas" to Color(0xff7030a0),
+    "Imports" to Color(0xffeb556e),
+    "Biomass" to Color(0xffef8534),
+    "Nuclear" to Color(0xff4b8a44),
+    "Hydro" to Color(0xff396ccb),
+    "Wind" to Color(0xff4fabd5),
+    "Solar" to Color(0xfff7d147)
+)
 
 @OptIn(ExperimentalTextApi::class)
 @Composable
@@ -65,8 +80,10 @@ fun MixChart(
 
                 val firstSet = groups.values.first()
                 val xUnit = size.width / firstSet.size
+                var previousFill = Path()
 
                 for (group in groups) {
+                    val fuel = group.key
                     val mixPoints = group.value
                     val coordinates = mutableListOf<PointF>()
                     val controlPoints1 = mutableListOf<PointF>()
@@ -110,23 +127,22 @@ fun MixChart(
                     }
 
                     // fill
-//                        val fillPath =
-//                            android.graphics.Path(stroke.asAndroidPath()).asComposePath().apply {
-//                                lineTo(coordinates.last().x, size.height)
-//                                lineTo(0f, size.height)
-//                                close()
-//                            }
-//                        drawPath(
-//                            fillPath,
-//                            brush = Brush.verticalGradient(
-//                                listOf(
-//                                    Color(0xff4fabd5),
-//                                    Color.Transparent,
-//                                )
-//                            ),
-//                        )
+                    val fillPath =
+                        android.graphics.Path(stroke.asAndroidPath()).asComposePath().apply {
+                            lineTo(coordinates.last().x, size.height)
+                            lineTo(0f, size.height)
+                            close()
+                        }
+                    val fill = Path.combine(PathOperation.Xor, fillPath, previousFill)
+                    previousFill = fillPath
+
+                    val color = colors[fuel] ?: Color.Black
                     drawPath(
-                        stroke, color = Color(0x884fabd5), style = Stroke(
+                        fill,
+                        brush = SolidColor(Color(color.red, color.green, color.blue, 0.6f)),
+                    )
+                    drawPath(
+                        stroke, color, style = Stroke(
                             width = 4f, cap = StrokeCap.Round
                         )
                     )
@@ -153,7 +169,7 @@ fun MixChart(
                         )
                     }
                     drawLine(
-                        Color.LightGray, pivot, Offset(lineX, 0f)
+                        Color.LightGray, Offset(lineX, size.height), Offset(lineX, 0f)
                     )
                 }
 
@@ -170,7 +186,7 @@ fun MixChart(
                     if (i > 0) {
                         drawText(
                             textLayoutResult = textLayoutResult,
-                            topLeft = Offset(0f - textSize.width / 2, lineY - textSize.height / 2),
+                            topLeft = Offset(0f - textSize.width, lineY - textSize.height / 2),
                         )
                     }
                     drawLine(
