@@ -49,17 +49,18 @@ fun IntensityChart(
         ) {
             val yMax = 600
             val yStep = 100
-            val xUnit = size.width / points.size
-            val yUnit = size.height / yMax.toFloat()
 
-            // add points
-            for ((i, point) in points.withIndex()) {
-                val x = i * xUnit
-                val y = size.height - (point.forecast * yUnit)
-                coordinates.add(PointF(x, y))
-            }
+            if (points.isNotEmpty()) {
+                val xUnit = size.width / points.size
+                val yUnit = size.height / yMax.toFloat()
 
-            if (coordinates.isNotEmpty()) {
+                // add points
+                for ((i, point) in points.withIndex()) {
+                    val x = i * xUnit
+                    val y = size.height - (point.forecast * yUnit)
+                    coordinates.add(PointF(x, y))
+                }
+
                 // for Bezier
                 for (i in 1 until coordinates.size) {
                     controlPoints1.add(

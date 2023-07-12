@@ -11,7 +11,7 @@ use crate::{
     },
     model::{
         location::{Coordinate, Location},
-        national, national_mix, postcode, regional, CurrentQuery, Model,
+        national_intensity, national_mix, postcode, regional, CurrentQuery, Model,
     },
     view_model::ViewModel,
 };
@@ -30,7 +30,7 @@ pub enum Event {
     #[serde(skip)]
     SetRegional(crux_http::Result<crux_http::Response<regional::RegionalResponse>>),
     #[serde(skip)]
-    SetNational(crux_http::Result<crux_http::Response<national::NationalResponse>>),
+    SetNational(crux_http::Result<crux_http::Response<national_intensity::NationalResponse>>),
     #[serde(skip)]
     SetNationalMix(crux_http::Result<crux_http::Response<national_mix::NationalMixResponse>>),
 }
@@ -77,7 +77,7 @@ impl crux_core::App for App {
                     match model.current_query {
                         CurrentQuery::National => {
                             caps.http
-                                .get(national::url(&model.time))
+                                .get(national_intensity::url(&model.time))
                                 .expect_json()
                                 .send(Event::SetNational);
                             caps.http
@@ -160,8 +160,9 @@ impl crux_core::App for App {
 mod tests {
     use super::*;
     use crate::model::{
-        location::Location, national::NationalResponse, national_mix::NationalMixResponse,
-        postcode::PostcodeResponse, regional::RegionalResponse, CurrentQuery,
+        location::Location, national_intensity::NationalResponse,
+        national_mix::NationalMixResponse, postcode::PostcodeResponse, regional::RegionalResponse,
+        CurrentQuery,
     };
     use assert_matches::assert_matches;
     use crux_core::{assert_effect, testing::AppTester};
@@ -410,7 +411,7 @@ mod tests {
 
         // resolve a simulated intensity response
         let simulated_response: NationalResponse =
-            serde_json::from_str(include_str!("./fixtures/national.json")).unwrap();
+            serde_json::from_str(include_str!("./fixtures/national_intensity.json")).unwrap();
         let response = HttpResponse::status(200).json(&simulated_response).build();
         let update = app.resolve(&mut request, response).unwrap();
 

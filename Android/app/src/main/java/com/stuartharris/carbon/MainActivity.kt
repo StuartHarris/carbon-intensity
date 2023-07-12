@@ -39,6 +39,7 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.stuartharris.carbon.chart.IntensityChart
+import com.stuartharris.carbon.chart.MixChart
 import com.stuartharris.carbon.shared.handleResponse
 import com.stuartharris.carbon.shared.processEvent
 import com.stuartharris.carbon.shared.view
@@ -232,12 +233,18 @@ fun View(model: Model = viewModel()) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row {
+                Column {
                     IntensityChart(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp),
                         points = model.view.national_intensity,
+                    )
+                    MixChart(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp),
+                        points = model.view.national_mix,
                     )
                 }
                 Row {
