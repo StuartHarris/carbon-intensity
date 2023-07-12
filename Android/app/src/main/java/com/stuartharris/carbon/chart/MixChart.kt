@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment.Companion.Center
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
@@ -50,7 +52,7 @@ fun MixChart(
     val textMeasurer = rememberTextMeasurer()
 
     Box(
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 12.dp), contentAlignment = Center
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 20.dp), contentAlignment = Center
     ) {
         Canvas(
             modifier = Modifier.fillMaxSize()
@@ -139,7 +141,7 @@ fun MixChart(
                     val color = colors[fuel] ?: Color.Black
                     drawPath(
                         fill,
-                        brush = SolidColor(Color(color.red, color.green, color.blue, 0.6f)),
+                        brush = SolidColor(Color(color.red, color.green, color.blue, 0.5f)),
                     )
                     drawPath(
                         stroke, color, style = Stroke(
@@ -192,6 +194,40 @@ fun MixChart(
                     drawLine(
                         Color.LightGray, Offset(0f, lineY), Offset(size.width, lineY)
                     )
+                }
+
+                // legend
+                var i = 0
+                for (group in groups) {
+                    val fuel = group.key
+                    println(fuel)
+                    val color = colors[fuel] ?: Color.Black
+                    val topLeft = Offset(i * 46.dp.toPx(), size.height + 30.dp.toPx())
+                    val rect = Size(26.dp.toPx(), 10.dp.toPx())
+                    drawRect(
+                        Color(color.red, color.green, color.blue, 0.5f),
+                        topLeft = topLeft,
+                        size = rect,
+                    )
+                    drawRect(
+                        color,
+                        topLeft = topLeft,
+                        size = rect,
+                        style = Stroke(width = 2.dp.toPx()),
+                    )
+                    val textLayoutResult = textMeasurer.measure(
+                        text = AnnotatedString(fuel),
+                        style = TextStyle(fontSize = 10.sp, color = Color.DarkGray)
+                    )
+                    translate(
+                        top = 10.dp.toPx(),
+                        left = (rect.width / 2) - (textLayoutResult.size.width / 2)
+                    ) {
+                        drawText(
+                            textLayoutResult = textLayoutResult, topLeft = topLeft
+                        )
+                    }
+                    ++i
                 }
             }
         }

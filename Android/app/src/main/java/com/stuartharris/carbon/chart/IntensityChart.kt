@@ -29,7 +29,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-val color = Color(140, 186, 249, 255)
+val color = Color(0xFF36A2EB)
 
 @OptIn(ExperimentalTextApi::class)
 @Composable
@@ -101,7 +101,7 @@ fun IntensityChart(
                 }
                 drawPath(
                     fillPath,
-                    brush = SolidColor(Color(color.red, color.green, color.blue, 0.6f)),
+                    brush = SolidColor(Color(color.red, color.green, color.blue, 0.5f)),
                 )
                 drawPath(
                     stroke, color, style = Stroke(

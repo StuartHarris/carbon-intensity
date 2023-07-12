@@ -245,7 +245,7 @@ fun View(model: Model = viewModel()) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp)
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 12.dp),
                         points = model.view.national_mix,
                     )
                 }

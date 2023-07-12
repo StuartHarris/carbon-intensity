@@ -68,6 +68,11 @@ export const options = {
       },
     },
   },
+  elements: {
+    point: {
+      pointStyle: false,
+    },
+  },
   plugins: {
     legend: {
       position: "top" as const,

@@ -103,16 +103,17 @@ struct ContentView: View {
 
     let isoFormatter = ISO8601DateFormatter()
     let timeFormatter = DateFormatter()
+    let intensity_color = Color(hex: 0x36A2EB)
 
     let fillColors: KeyValuePairs<String, Color> = [
-        "Coal": Color(hex: 0x2C2A28, alpha: 0.6),
-        "Gas": Color(hex: 0x7030A0, alpha: 0.6),
-        "Imports": Color(hex: 0xEB556E, alpha: 0.6),
-        "Biomass": Color(hex: 0xEF8534, alpha: 0.6),
-        "Nuclear": Color(hex: 0x4B8A44, alpha: 0.6),
-        "Hydro": Color(hex: 0x396CCB, alpha: 0.6),
-        "Wind": Color(hex: 0x4FABD5, alpha: 0.6),
-        "Solar": Color(hex: 0xF7D147, alpha: 0.6),
+        "Coal": Color(hex: 0x2C2A28),
+        "Gas": Color(hex: 0x7030A0),
+        "Imports": Color(hex: 0xEB556E),
+        "Biomass": Color(hex: 0xEF8534),
+        "Nuclear": Color(hex: 0x4B8A44),
+        "Hydro": Color(hex: 0x396CCB),
+        "Wind": Color(hex: 0x4FABD5),
+        "Solar": Color(hex: 0xF7D147),
     ]
 
     init(model: Model) {
@@ -135,12 +136,13 @@ struct ContentView: View {
                 AreaMark(
                     x: .value("Time", $0.date),
                     y: .value("gCO2/kWh", $0.forecast)
-                ).opacity(0.5)
+                ).opacity(0.5).accessibilityHidden(true)
                 LineMark(
                     x: .value("Time", $0.date),
                     y: .value("gCO2/kWh", $0.forecast)
                 )
-            }.frame(height: 250)
+            }.foregroundStyle(intensity_color)
+                .frame(height: 250)
                 .chartYScale(domain: 0 ... 600)
                 .chartXAxis(content: {
                     AxisMarks { value in
@@ -157,21 +159,23 @@ struct ContentView: View {
                 AreaMark(
                     x: .value("Time", $0.date),
                     y: .value("Percent", $0.perc)
-                ).foregroundStyle(by: .value("Fuel", $0.fuel))
-            }.frame(height: 250)
-                .chartYScale(domain: 0 ... 100)
-                .chartXAxis(content: {
-                    AxisMarks { value in
-                        AxisValueLabel {
-                            let x = formatDate(value.as(String.self)!)
-                            if x.hasSuffix("00") {
-                                Text(x)
-                                    .rotationEffect(Angle(degrees: -45))
-                            }
+                ).opacity(0.5)
+                    .foregroundStyle(by: .value("Fuel", $0.fuel))
+            }
+            .frame(height: 250)
+            .chartYScale(domain: 0 ... 100)
+            .chartXAxis(content: {
+                AxisMarks { value in
+                    AxisValueLabel {
+                        let x = formatDate(value.as(String.self)!)
+                        if x.hasSuffix("00") {
+                            Text(x)
+                                .rotationEffect(Angle(degrees: -45))
                         }
                     }
-                })
-                .chartForegroundStyleScale(fillColors)
+                }
+            })
+            .chartForegroundStyleScale(fillColors)
             HStack {
                 ActionButton(label: "National", color: .yellow) {
                     model.update(msg: .event(.getNational))
