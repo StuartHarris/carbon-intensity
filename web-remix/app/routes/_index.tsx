@@ -1,5 +1,4 @@
-import type { NextPage } from "next";
-import Head from "next/head";
+import type { V2_MetaFunction } from "@remix-run/node";
 import { useEffect, useState } from "react";
 import {
   Chart as ChartJS,
@@ -14,11 +13,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 
-import init_core, {
-  process_event,
-  handle_response,
-  view,
-} from "../shared/core";
+import { process_event, handle_response, view } from "shared/shared";
 import * as types from "shared_types/types/shared_types";
 import * as bincode from "shared_types/bincode/mod";
 import { httpRequest } from "./httpRequest";
@@ -66,11 +61,6 @@ export const options = {
         display: true,
         text: "Time",
       },
-    },
-  },
-  elements: {
-    point: {
-      pointStyle: false,
     },
   },
   plugins: {
@@ -134,7 +124,18 @@ function deserializeRequests(bytes: Uint8Array) {
 
   return requests;
 }
-const Home: NextPage = () => {
+
+export const meta: V2_MetaFunction = () => {
+  return [
+    { title: "Carbon Intensity" },
+    {
+      name: "description",
+      content: "Carbon Intensity and Generation Mix forecasts",
+    },
+  ];
+};
+
+export default function Index() {
   const [state, setState] = useState(initialState);
 
   const dispatch = (action: Event) => {
@@ -187,6 +188,7 @@ const Home: NextPage = () => {
                 ),
                 borderColor: "rgb(53, 162, 235)",
                 backgroundColor: "rgba(53, 162, 235, 0.5)",
+                pointStyle: false,
                 cubicInterpolationMode: "monotone",
                 tension: 0.4,
               },
@@ -196,25 +198,30 @@ const Home: NextPage = () => {
                 data: viewModel.local_intensity.map((point) => point.forecast),
                 borderColor: "rgb(255, 205, 86)",
                 backgroundColor: "rgb(255, 205, 86, 0.5)",
+                pointStyle: false,
                 cubicInterpolationMode: "monotone",
                 tension: 0.4,
               },
             ],
           };
-          const mixPoints: Record<string, types.GenerationMixPoint> =
-            viewModel.national_mix.reduce(function (acc, point) {
-              acc[point.fuel] = acc[point.fuel] || [];
-              acc[point.fuel].push(point);
-              return acc;
-            }, {});
+          const mixPoints = viewModel.national_mix.reduce(function (
+            acc,
+            point
+          ) {
+            acc[point.fuel] = acc[point.fuel] || [];
+            acc[point.fuel].push(point);
+            return acc;
+          },
+          {} as Record<string, types.GenerationMixPoint[]>);
           let datasets = Object.entries(mixPoints).map(([label, value]) => {
             const color = mixCategories[label];
             return {
               fill: label === "Coal" ? "origin" : "-1",
               label,
-              data: Object.values(value).map((point) => point.perc),
+              data: value.map((point) => point.perc),
               borderColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
               backgroundColor: `rgb(${color[0]}, ${color[1]}, ${color[2]}, 0.5)`,
+              pointStyle: false,
               cubicInterpolationMode: "monotone",
               tension: 0.4,
             };
@@ -259,89 +266,75 @@ const Home: NextPage = () => {
   };
 
   useEffect(() => {
-    async function loadCore() {
-      await init_core();
-
-      // Initial event
-      dispatch({
-        kind: "event",
-        event: new types.EventVariantGetNational(),
-      });
-    }
-
-    loadCore();
+    // Initial event
+    dispatch({
+      kind: "event",
+      event: new types.EventVariantGetNational(),
+    });
   }, []);
 
   return (
-    <>
-      <Head>
-        <title>Carbon Intensity</title>
-      </Head>
-
-      <main>
-        <section className="box container has-text-centered m-5">
-          <div
-            style={{
-              height: "60vh",
-              position: "relative",
-              marginBottom: "1%",
-              padding: "1%",
-            }}
+    <main>
+      <section className="box container has-text-centered m-5">
+        <div
+          style={{
+            height: "60vh",
+            position: "relative",
+            marginBottom: "1%",
+            padding: "1%",
+          }}
+        >
+          {state.intensity_data && (
+            <Line
+              options={options}
+              data={state.intensity_data}
+              height="200px"
+              width="200px"
+            />
+          )}
+        </div>
+        <div
+          style={{
+            height: "60vh",
+            position: "relative",
+            marginBottom: "1%",
+            padding: "1%",
+          }}
+        >
+          {state.mix_data && (
+            <Line
+              options={state.mix_options}
+              data={state.mix_data}
+              height="200px"
+              width="200px"
+            />
+          )}
+        </div>
+        <div className="buttons section is-centered">
+          <button
+            className="button is-primary is-success"
+            onClick={() =>
+              dispatch({
+                kind: "event",
+                event: new types.EventVariantGetNational(),
+              })
+            }
           >
-            {state.intensity_data && (
-              <Line
-                options={options}
-                data={state.intensity_data}
-                height="200px"
-                width="200px"
-              />
-            )}
-          </div>
-          <div
-            style={{
-              height: "60vh",
-              position: "relative",
-              marginBottom: "1%",
-              padding: "1%",
-            }}
+            {"National"}
+          </button>
+          <button
+            className="button is-primary is-success"
+            onClick={() =>
+              dispatch({
+                kind: "event",
+                event: new types.EventVariantGetLocal(),
+              })
+            }
           >
-            {state.mix_data && (
-              <Line
-                options={state.mix_options}
-                data={state.mix_data}
-                height="200px"
-                width="200px"
-              />
-            )}
-          </div>
-          <div className="buttons section is-centered">
-            <button
-              className="button is-primary is-success"
-              onClick={() =>
-                dispatch({
-                  kind: "event",
-                  event: new types.EventVariantGetNational(),
-                })
-              }
-            >
-              {"National"}
-            </button>
-            <button
-              className="button is-primary is-success"
-              onClick={() =>
-                dispatch({
-                  kind: "event",
-                  event: new types.EventVariantGetLocal(),
-                })
-              }
-            >
-              {"Local"}
-            </button>
-          </div>
-        </section>
-      </main>
-    </>
+            {"Local"}
+          </button>
+        </div>
+      </section>
+    </main>
   );
-};
-
-export default Home;
+}
