@@ -16,8 +16,8 @@ import { Line } from "react-chartjs-2";
 import { process_event, handle_response, view } from "shared/shared";
 import * as types from "shared_types/types/shared_types";
 import * as bincode from "shared_types/bincode/mod";
-import { httpRequest } from "./httpRequest";
-import { locationRequest } from "./locationRequest";
+import { httpRequest } from "../capabilities/httpRequest";
+import { locationRequest } from "../capabilities/locationRequest";
 
 ChartJS.register(
   CategoryScale,
