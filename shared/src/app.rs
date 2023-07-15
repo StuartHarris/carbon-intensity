@@ -11,7 +11,7 @@ use crate::{
     },
     model::{
         location::{Coordinate, Location},
-        national_intensity, national_mix, postcode, regional, CurrentQuery, Model,
+        national_intensity, national_mix, postcode, regional, Model,
     },
     view_model::ViewModel,
 };
@@ -22,7 +22,10 @@ pub enum Event {
     GetLocal,
 
     // events local to the core
-    CurrentTime(TimeResponse),
+    #[serde(skip)]
+    SetTimeLocal(TimeResponse),
+    #[serde(skip)]
+    SetTimeNational(TimeResponse),
     #[serde(skip)]
     SetLocation(LocationResponse),
     #[serde(skip)]
@@ -56,39 +59,38 @@ impl crux_core::App for App {
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
             Event::GetNational => {
-                model.current_query = CurrentQuery::National;
-                caps.time.get(Event::CurrentTime);
+                caps.time.get(Event::SetTimeNational);
             }
             Event::GetLocal => {
-                model.current_query = CurrentQuery::Local;
-                caps.time.get(Event::CurrentTime);
+                caps.time.get(Event::SetTimeLocal);
             }
-            Event::CurrentTime(TimeResponse(iso_time)) => {
-                let last_updated = match model.current_query {
-                    CurrentQuery::National => model.national.last_updated,
-                    CurrentQuery::Local => model.local.last_updated,
-                };
+            Event::SetTimeLocal(TimeResponse(iso_time)) => {
                 let current_time = DateTime::parse_from_rfc3339(&iso_time)
                     .unwrap()
                     .with_timezone(&Utc);
                 model.time = current_time;
 
-                if current_time - last_updated > Duration::minutes(30) {
-                    match model.current_query {
-                        CurrentQuery::National => {
-                            caps.http
-                                .get(national_intensity::url(&model.time))
-                                .expect_json()
-                                .send(Event::SetNational);
-                            caps.http
-                                .get(national_mix::url(&model.time))
-                                .expect_json()
-                                .send(Event::SetNationalMix);
-                        }
-                        CurrentQuery::Local => {
-                            caps.location.get(Event::SetLocation);
-                        }
-                    }
+                if current_time - model.local.last_updated > Duration::minutes(30) {
+                    caps.location.get(Event::SetLocation);
+                } else {
+                    caps.render.render();
+                }
+            }
+            Event::SetTimeNational(TimeResponse(iso_time)) => {
+                let current_time = DateTime::parse_from_rfc3339(&iso_time)
+                    .unwrap()
+                    .with_timezone(&Utc);
+                model.time = current_time;
+
+                if current_time - model.national.last_updated > Duration::minutes(30) {
+                    caps.http
+                        .get(national_intensity::url(&model.time))
+                        .expect_json()
+                        .send(Event::SetNational);
+                    caps.http
+                        .get(national_mix::url(&model.time))
+                        .expect_json()
+                        .send(Event::SetNationalMix);
                 } else {
                     caps.render.render();
                 }
@@ -162,9 +164,7 @@ mod tests {
     use crate::model::{
         location::Location, national_intensity::NationalResponse,
         national_mix::NationalMixResponse, postcode::PostcodeResponse, regional::RegionalResponse,
-        CurrentQuery,
     };
-    use assert_matches::assert_matches;
     use crux_core::{assert_effect, testing::AppTester};
     use crux_http::{
         protocol::{HttpRequest, HttpResponse},
@@ -176,9 +176,8 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        // request "local" data and check we update the model and get a time request
+        // request "local" data and check we get a time request
         let update = app.update(Event::GetLocal, &mut model);
-        assert_eq!(model.current_query, CurrentQuery::Local);
         let requests = &mut update.into_effects().filter_map(Effect::into_time);
 
         // resolve the time request with a simulated time response
@@ -187,7 +186,7 @@ mod tests {
         let update = app.resolve(&mut request, response.clone()).unwrap();
 
         // check this raises the correct set time event
-        let set_time_event = Event::CurrentTime(response.clone());
+        let set_time_event = Event::SetTimeLocal(response.clone());
         let actual = &update.events;
         let expected = &vec![set_time_event.clone()];
         assert_eq!(actual, expected);
@@ -372,9 +371,8 @@ mod tests {
         let app = AppTester::<App, _>::default();
         let mut model = Model::default();
 
-        // request "national" data and check we update the model and get a time request
+        // request "national" data and check we get a time request
         let update = app.update(Event::GetNational, &mut model);
-        assert_matches!(model.current_query, CurrentQuery::National);
         let requests = &mut update.into_effects().filter_map(Effect::into_time);
 
         // resolve the time request with a simulated time response
@@ -383,7 +381,7 @@ mod tests {
         let update = app.resolve(&mut request, response.clone()).unwrap();
 
         // check this raises the correct set time event
-        let set_time_event = Event::CurrentTime(response.clone());
+        let set_time_event = Event::SetTimeNational(response.clone());
         let actual = &update.events;
         let expected = &vec![set_time_event.clone()];
         assert_eq!(actual, expected);

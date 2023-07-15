@@ -42,17 +42,9 @@ pub struct Data<T: DataSet + Serialize> {
     pub last_updated: DateTime<Utc>,
 }
 
-#[derive(Default, Serialize, PartialEq, Eq, Debug, Clone, Copy)]
-pub enum CurrentQuery {
-    #[default]
-    National,
-    Local,
-}
-
 #[derive(Default, Serialize)]
 pub struct Model {
     pub time: DateTime<Utc>,
-    pub current_query: CurrentQuery, // note this is problematic and really should be some sort of context
     pub national: Data<National>,
     pub local: Data<Local>,
 }

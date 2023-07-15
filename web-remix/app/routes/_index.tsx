@@ -46,16 +46,13 @@ const mixCategories: Record<string, number[]> = {
 
 export const options = {
   responsive: true,
+  interaction: {
+    mode: "nearest",
+    axis: "x",
+    intersect: false,
+  },
   maintainAspectRatio: false,
   scales: {
-    y: {
-      min: 0,
-      max: 600,
-      title: {
-        display: true,
-        text: "gCO2/kWh",
-      },
-    },
     x: {
       title: {
         display: true,
@@ -73,13 +70,21 @@ export const options = {
     },
   },
 };
+const intensity_options = {
+  ...options,
+  scales: {
+    y: {
+      min: 0,
+      max: 600,
+      title: {
+        display: true,
+        text: "gCO2/kWh",
+      },
+    },
+  },
+};
 const mix_options = {
   ...options,
-  interaction: {
-    mode: "nearest",
-    axis: "x",
-    intersect: false,
-  },
   scales: {
     y: {
       stacked: true,
@@ -103,9 +108,10 @@ interface Response {
 type State = {
   national_name?: string;
   local_name?: string;
+  intensity_options?: any;
   intensity_data?: any;
-  mix_data?: any;
   mix_options?: any;
+  mix_data?: any;
 };
 
 const initialState: State = {};
@@ -234,6 +240,7 @@ export default function Index() {
             intensity_data,
             mix_data,
             mix_options,
+            intensity_options,
           });
 
           break;
@@ -271,6 +278,7 @@ export default function Index() {
       kind: "event",
       event: new types.EventVariantGetNational(),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -286,7 +294,7 @@ export default function Index() {
         >
           {state.intensity_data && (
             <Line
-              options={options}
+              options={state.intensity_options}
               data={state.intensity_data}
               height="200px"
               width="200px"
