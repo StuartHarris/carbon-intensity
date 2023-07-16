@@ -22,13 +22,11 @@ class DefaultLocationTracker(
 ) : LocationTracker {
     override suspend fun getCurrentLocation(): Location? {
         val hasAccessFineLocationPermission = ContextCompat.checkSelfPermission(
-            application,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
+            application, android.Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
         val hasAccessCoarseLocationPermission = ContextCompat.checkSelfPermission(
-            application,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION
+            application, android.Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
 
@@ -36,9 +34,10 @@ class DefaultLocationTracker(
             Context.LOCATION_SERVICE
         ) as LocationManager
 
-        val isGpsEnabled = locationManager
-            .isProviderEnabled(LocationManager.NETWORK_PROVIDER) ||
-                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+        val isGpsEnabled =
+            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) || locationManager.isProviderEnabled(
+                LocationManager.GPS_PROVIDER
+            )
 
         if (!isGpsEnabled && !(hasAccessCoarseLocationPermission || hasAccessFineLocationPermission)) {
             return null

@@ -1,7 +1,6 @@
 package com.stuartharris.carbon
 
 import android.app.Application
-import android.location.Location
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -127,22 +125,12 @@ class Model @Inject constructor(
 ) : ViewModel() {
     var view: MyViewModel by mutableStateOf(
         MyViewModel(
-            Mode.National(),"", emptyList(), emptyList(), "", emptyList(), emptyList()
+            Mode.National(), "", emptyList(), emptyList(), "", emptyList(), emptyList()
         )
     )
         private set
 
     private val httpClient = HttpClient(CIO)
-
-    var currentLocation by mutableStateOf<Location?>(null)
-
-//    var pointsData: List<Point> = emptyList()
-
-    fun getCurrentLocation() {
-        viewModelScope.launch {
-            currentLocation = locationTracker.getCurrentLocation()
-        }
-    }
 
     init {
         viewModelScope.launch {
@@ -180,9 +168,10 @@ class Model @Inject constructor(
             }
 
             is Effect.GetLocation -> {
+                val loc = locationTracker.getCurrentLocation()
                 val response = LocationResponse(
                     Optional.of(
-                        Coordinate(currentLocation?.latitude, currentLocation?.longitude)
+                        Coordinate(loc?.latitude, loc?.longitude)
                     )
                 )
                 update(CoreMessage.Response(req.uuid, Outcome.Location(response)))
@@ -209,12 +198,6 @@ fun View(model: Model = viewModel()) {
             android.Manifest.permission.ACCESS_FINE_LOCATION
         )
     )
-
-    LaunchedEffect(key1 = locationPermissions.allPermissionsGranted) {
-        if (locationPermissions.allPermissionsGranted) {
-            model.getCurrentLocation()
-        }
-    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
