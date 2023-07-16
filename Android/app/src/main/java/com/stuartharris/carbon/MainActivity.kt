@@ -47,6 +47,7 @@ import com.stuartharris.carbon.shared_types.Coordinate
 import com.stuartharris.carbon.shared_types.Effect
 import com.stuartharris.carbon.shared_types.HttpResponse
 import com.stuartharris.carbon.shared_types.LocationResponse
+import com.stuartharris.carbon.shared_types.Mode
 import com.stuartharris.carbon.shared_types.Requests
 import com.stuartharris.carbon.shared_types.TimeResponse
 import com.stuartharris.carbon.ui.theme.CarbonIntensityTheme
@@ -126,7 +127,7 @@ class Model @Inject constructor(
 ) : ViewModel() {
     var view: MyViewModel by mutableStateOf(
         MyViewModel(
-            "", emptyList(), emptyList(), "", emptyList(), emptyList()
+            Mode.National(),"", emptyList(), emptyList(), "", emptyList(), emptyList()
         )
     )
         private set
@@ -224,7 +225,8 @@ fun View(model: Model = viewModel()) {
     ) {
         Text(text = "Carbon Intensity", fontSize = 30.sp, modifier = Modifier.padding(10.dp))
         Text(
-            text = model.view.local_name, modifier = Modifier.padding(10.dp)
+            text = if (model.view.mode == Mode.Local()) model.view.local_name else model.view.national_name,
+            modifier = Modifier.padding(10.dp)
         )
         Box(
             modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
@@ -239,14 +241,14 @@ fun View(model: Model = viewModel()) {
                             .fillMaxWidth()
                             .height(300.dp)
                             .padding(vertical = 4.dp),
-                        points = model.view.national_intensity,
+                        points = if (model.view.mode == Mode.Local()) model.view.local_intensity else model.view.national_intensity,
                     )
                     MixChart(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp)
                             .padding(vertical = 12.dp),
-                        points = model.view.national_mix,
+                        points = if (model.view.mode == Mode.Local()) model.view.local_mix else model.view.national_mix,
                     )
                 }
                 Row {

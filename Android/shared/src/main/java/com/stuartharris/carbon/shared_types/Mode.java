@@ -1,16 +1,16 @@
 package com.stuartharris.carbon.shared_types;
 
 
-public abstract class Event {
+public abstract class Mode {
 
     abstract public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError;
 
-    public static Event deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+    public static Mode deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
         int index = deserializer.deserialize_variant_index();
         switch (index) {
-            case 0: return GetNational.load(deserializer);
-            case 1: return GetLocal.load(deserializer);
-            default: throw new com.novi.serde.DeserializationError("Unknown variant index for Event: " + index);
+            case 0: return National.load(deserializer);
+            case 1: return Local.load(deserializer);
+            default: throw new com.novi.serde.DeserializationError("Unknown variant index for Mode: " + index);
         }
     }
 
@@ -20,20 +20,20 @@ public abstract class Event {
         return serializer.get_bytes();
     }
 
-    public static Event bincodeDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
+    public static Mode bincodeDeserialize(byte[] input) throws com.novi.serde.DeserializationError {
         if (input == null) {
              throw new com.novi.serde.DeserializationError("Cannot deserialize null array");
         }
         com.novi.serde.Deserializer deserializer = new com.novi.bincode.BincodeDeserializer(input);
-        Event value = deserialize(deserializer);
+        Mode value = deserialize(deserializer);
         if (deserializer.get_buffer_offset() < input.length) {
              throw new com.novi.serde.DeserializationError("Some input bytes were not read");
         }
         return value;
     }
 
-    public static final class GetNational extends Event {
-        public GetNational() {
+    public static final class National extends Mode {
+        public National() {
         }
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
@@ -42,7 +42,7 @@ public abstract class Event {
             serializer.decrease_container_depth();
         }
 
-        static GetNational load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+        static National load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
             deserializer.decrease_container_depth();
@@ -53,7 +53,7 @@ public abstract class Event {
             if (this == obj) return true;
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
-            GetNational other = (GetNational) obj;
+            National other = (National) obj;
             return true;
         }
 
@@ -63,15 +63,15 @@ public abstract class Event {
         }
 
         public static final class Builder {
-            public GetNational build() {
-                return new GetNational(
+            public National build() {
+                return new National(
                 );
             }
         }
     }
 
-    public static final class GetLocal extends Event {
-        public GetLocal() {
+    public static final class Local extends Mode {
+        public Local() {
         }
 
         public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
@@ -80,7 +80,7 @@ public abstract class Event {
             serializer.decrease_container_depth();
         }
 
-        static GetLocal load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
+        static Local load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
             deserializer.increase_container_depth();
             Builder builder = new Builder();
             deserializer.decrease_container_depth();
@@ -91,7 +91,7 @@ public abstract class Event {
             if (this == obj) return true;
             if (obj == null) return false;
             if (getClass() != obj.getClass()) return false;
-            GetLocal other = (GetLocal) obj;
+            Local other = (Local) obj;
             return true;
         }
 
@@ -101,8 +101,8 @@ public abstract class Event {
         }
 
         public static final class Builder {
-            public GetLocal build() {
-                return new GetLocal(
+            public Local build() {
+                return new Local(
                 );
             }
         }

@@ -4,11 +4,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::{
     intensity::{GenerationMix, Period},
-    Model,
+    Mode, Model,
 };
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ViewModel {
+    pub mode: Mode,
     pub national_name: String,
     pub national_intensity: Vec<IntensityPoint>,
     pub national_mix: Vec<GenerationMixPoint>,
@@ -114,6 +115,7 @@ impl From<&Model> for ViewModel {
         local_mix.sort_by(|a, b| mix_order[&a.fuel].cmp(&mix_order[&b.fuel]));
 
         ViewModel {
+            mode: value.mode,
             national_name: "UK".to_string(),
             national_intensity,
             national_mix,

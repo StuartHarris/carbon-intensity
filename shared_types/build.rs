@@ -1,5 +1,5 @@
 use crux_core::typegen::TypeGen;
-use shared::App;
+use shared::{App, Mode};
 use std::path::PathBuf;
 
 fn main() {
@@ -8,6 +8,9 @@ fn main() {
     let mut gen = TypeGen::new();
 
     gen.register_app::<App>().expect("register");
+
+    gen.register_type_with_samples(vec![Mode::National, Mode::Local])
+        .expect("register samples");
 
     let output_root = PathBuf::from("./generated");
 

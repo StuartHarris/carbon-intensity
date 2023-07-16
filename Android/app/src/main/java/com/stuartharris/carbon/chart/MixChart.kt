@@ -200,7 +200,6 @@ fun MixChart(
                 var i = 0
                 for (group in groups) {
                     val fuel = group.key
-                    println(fuel)
                     val color = colors[fuel] ?: Color.Black
                     val topLeft = Offset(i * 46.dp.toPx(), size.height + 30.dp.toPx())
                     val rect = Size(26.dp.toPx(), 10.dp.toPx())

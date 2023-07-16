@@ -12,7 +12,14 @@ pub mod national_mix;
 pub mod postcode;
 pub mod regional;
 
-#[derive(Serialize, Default, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Default, Copy, Clone, Debug, PartialEq)]
+pub enum Mode {
+    #[default]
+    National,
+    Local,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub enum Scope {
     #[default]
     None,
@@ -45,6 +52,7 @@ pub struct Data<T: DataSet + Serialize> {
 #[derive(Default, Serialize)]
 pub struct Model {
     pub time: DateTime<Utc>,
+    pub mode: Mode,
     pub national: Data<National>,
     pub local: Data<Local>,
 }

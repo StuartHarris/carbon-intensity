@@ -11,7 +11,7 @@ use crate::{
     },
     model::{
         location::{Coordinate, Location},
-        national_intensity, national_mix, postcode, regional, Model,
+        national_intensity, national_mix, postcode, regional, Mode, Model,
     },
     view_model::ViewModel,
 };
@@ -59,9 +59,11 @@ impl crux_core::App for App {
     fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
         match event {
             Event::GetNational => {
+                model.mode = Mode::National;
                 caps.time.get(Event::SetTimeNational);
             }
             Event::GetLocal => {
+                model.mode = Mode::Local;
                 caps.time.get(Event::SetTimeLocal);
             }
             Event::SetTimeLocal(TimeResponse(iso_time)) => {
@@ -178,6 +180,7 @@ mod tests {
 
         // request "local" data and check we get a time request
         let update = app.update(Event::GetLocal, &mut model);
+        assert_eq!(model.mode, Mode::Local);
         let requests = &mut update.into_effects().filter_map(Effect::into_time);
 
         // resolve the time request with a simulated time response
@@ -339,6 +342,7 @@ mod tests {
         // check that the view renders as expected
         insta::assert_yaml_snapshot!(app.view(&model), @r###"
         ---
+        mode: Local
         national_name: UK
         national_intensity: []
         national_mix: []
@@ -373,6 +377,7 @@ mod tests {
 
         // request "national" data and check we get a time request
         let update = app.update(Event::GetNational, &mut model);
+        assert_eq!(model.mode, Mode::National);
         let requests = &mut update.into_effects().filter_map(Effect::into_time);
 
         // resolve the time request with a simulated time response
@@ -525,6 +530,7 @@ mod tests {
         // check the view renders as expected
         insta::assert_yaml_snapshot!(app.view(&model), @r###"
         ---
+        mode: National
         national_name: UK
         national_intensity:
           - date: "2023-07-04T23:30:00+00:00"

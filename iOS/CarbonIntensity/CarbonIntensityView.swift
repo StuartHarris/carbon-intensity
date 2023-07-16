@@ -18,6 +18,7 @@ enum Message {
 @MainActor
 class Model: ObservableObject {
     @Published var view = ViewModel(
+        mode: .national,
         national_name: "",
         national_intensity: [],
         national_mix: [],
@@ -131,8 +132,8 @@ struct ContentView: View {
     var body: some View {
         VStack {
             Text("Carbon Intensity").font(.headline)
-            Text(model.view.local_name).padding()
-            Chart(model.view.national_intensity) {
+            Text(model.view.mode == .local ? model.view.local_name : model.view.national_name).padding()
+            Chart(model.view.mode == .local ? model.view.local_intensity : model.view.national_intensity) {
                 AreaMark(
                     x: .value("Time", $0.date),
                     y: .value("gCO2/kWh", $0.forecast)
@@ -155,7 +156,7 @@ struct ContentView: View {
                         }
                     }
                 })
-            Chart(model.view.national_mix) {
+            Chart(model.view.mode == .local ? model.view.local_mix : model.view.national_mix) {
                 AreaMark(
                     x: .value("Time", $0.date),
                     y: .value("Percent", $0.perc)

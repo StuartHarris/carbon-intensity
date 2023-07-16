@@ -52,21 +52,9 @@ export const options = {
     intersect: false,
   },
   maintainAspectRatio: false,
-  scales: {
-    x: {
-      title: {
-        display: true,
-        text: "Time",
-      },
-    },
-  },
   plugins: {
     legend: {
       position: "top" as const,
-    },
-    title: {
-      display: true,
-      text: "Carbon Intensity",
     },
   },
 };
@@ -82,6 +70,12 @@ const intensity_options = {
       },
     },
   },
+  plugins: {
+    title: {
+      display: true,
+      text: "Carbon Intensity",
+    },
+  },
 };
 const mix_options = {
   ...options,
@@ -90,6 +84,16 @@ const mix_options = {
       stacked: true,
       min: 0,
       max: 100,
+      title: {
+        display: true,
+        text: "percent",
+      },
+    },
+  },
+  plugins: {
+    title: {
+      display: true,
+      text: "Carbon Intensity",
     },
   },
 };
@@ -106,6 +110,7 @@ interface Response {
 }
 
 type State = {
+  isNational?: boolean;
   national_name?: string;
   local_name?: string;
   intensity_options?: any;
@@ -171,6 +176,8 @@ export default function Index() {
           const bytes = view();
           const viewDeserializer = new bincode.BincodeDeserializer(bytes);
           const viewModel = types.ViewModel.deserialize(viewDeserializer);
+          const isNational =
+            viewModel.mode?.constructor === types.ModeVariantNational;
 
           const labels = (
             viewModel.national_intensity ||
@@ -210,15 +217,12 @@ export default function Index() {
               },
             ],
           };
-          const mixPoints = viewModel.national_mix.reduce(function (
-            acc,
-            point
-          ) {
+          const mix = isNational ? viewModel.national_mix : viewModel.local_mix;
+          const mixPoints = mix.reduce(function (acc, point) {
             acc[point.fuel] = acc[point.fuel] || [];
             acc[point.fuel].push(point);
             return acc;
-          },
-          {} as Record<string, types.GenerationMixPoint[]>);
+          }, {} as Record<string, types.GenerationMixPoint[]>);
           let datasets = Object.entries(mixPoints).map(([label, value]) => {
             const color = mixCategories[label];
             return {
@@ -233,14 +237,18 @@ export default function Index() {
             };
           });
           const mix_data = { labels, datasets };
+          mix_options.plugins.title.text = isNational
+            ? viewModel.national_name
+            : viewModel.local_name;
 
           setState({
+            isNational,
             local_name: viewModel.local_name,
             national_name: viewModel.national_name,
             intensity_data,
+            intensity_options,
             mix_data,
             mix_options,
-            intensity_options,
           });
 
           break;
@@ -280,13 +288,18 @@ export default function Index() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  console.log(
+    "mode",
+    state.isNational ? state.national_name : state.local_name
+  );
 
   return (
     <main>
-      <section className="box container has-text-centered m-5">
+      <section className="container has-text-centered m-5">
+        <h1 className="title">Carbon Intensity</h1>
         <div
           style={{
-            height: "60vh",
+            height: "40vh",
             position: "relative",
             marginBottom: "1%",
             padding: "1%",
@@ -303,7 +316,7 @@ export default function Index() {
         </div>
         <div
           style={{
-            height: "60vh",
+            height: "40vh",
             position: "relative",
             marginBottom: "1%",
             padding: "1%",

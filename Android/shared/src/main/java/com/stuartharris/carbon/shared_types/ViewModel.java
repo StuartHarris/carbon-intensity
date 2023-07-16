@@ -2,6 +2,7 @@ package com.stuartharris.carbon.shared_types;
 
 
 public final class ViewModel {
+    public final Mode mode;
     public final String national_name;
     public final java.util.List<IntensityPoint> national_intensity;
     public final java.util.List<GenerationMixPoint> national_mix;
@@ -9,13 +10,15 @@ public final class ViewModel {
     public final java.util.List<IntensityPoint> local_intensity;
     public final java.util.List<GenerationMixPoint> local_mix;
 
-    public ViewModel(String national_name, java.util.List<IntensityPoint> national_intensity, java.util.List<GenerationMixPoint> national_mix, String local_name, java.util.List<IntensityPoint> local_intensity, java.util.List<GenerationMixPoint> local_mix) {
+    public ViewModel(Mode mode, String national_name, java.util.List<IntensityPoint> national_intensity, java.util.List<GenerationMixPoint> national_mix, String local_name, java.util.List<IntensityPoint> local_intensity, java.util.List<GenerationMixPoint> local_mix) {
+        java.util.Objects.requireNonNull(mode, "mode must not be null");
         java.util.Objects.requireNonNull(national_name, "national_name must not be null");
         java.util.Objects.requireNonNull(national_intensity, "national_intensity must not be null");
         java.util.Objects.requireNonNull(national_mix, "national_mix must not be null");
         java.util.Objects.requireNonNull(local_name, "local_name must not be null");
         java.util.Objects.requireNonNull(local_intensity, "local_intensity must not be null");
         java.util.Objects.requireNonNull(local_mix, "local_mix must not be null");
+        this.mode = mode;
         this.national_name = national_name;
         this.national_intensity = national_intensity;
         this.national_mix = national_mix;
@@ -26,6 +29,7 @@ public final class ViewModel {
 
     public void serialize(com.novi.serde.Serializer serializer) throws com.novi.serde.SerializationError {
         serializer.increase_container_depth();
+        mode.serialize(serializer);
         serializer.serialize_str(national_name);
         TraitHelpers.serialize_vector_IntensityPoint(national_intensity, serializer);
         TraitHelpers.serialize_vector_GenerationMixPoint(national_mix, serializer);
@@ -44,6 +48,7 @@ public final class ViewModel {
     public static ViewModel deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {
         deserializer.increase_container_depth();
         Builder builder = new Builder();
+        builder.mode = Mode.deserialize(deserializer);
         builder.national_name = deserializer.deserialize_str();
         builder.national_intensity = TraitHelpers.deserialize_vector_IntensityPoint(deserializer);
         builder.national_mix = TraitHelpers.deserialize_vector_GenerationMixPoint(deserializer);
@@ -71,6 +76,7 @@ public final class ViewModel {
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
         ViewModel other = (ViewModel) obj;
+        if (!java.util.Objects.equals(this.mode, other.mode)) { return false; }
         if (!java.util.Objects.equals(this.national_name, other.national_name)) { return false; }
         if (!java.util.Objects.equals(this.national_intensity, other.national_intensity)) { return false; }
         if (!java.util.Objects.equals(this.national_mix, other.national_mix)) { return false; }
@@ -82,6 +88,7 @@ public final class ViewModel {
 
     public int hashCode() {
         int value = 7;
+        value = 31 * value + (this.mode != null ? this.mode.hashCode() : 0);
         value = 31 * value + (this.national_name != null ? this.national_name.hashCode() : 0);
         value = 31 * value + (this.national_intensity != null ? this.national_intensity.hashCode() : 0);
         value = 31 * value + (this.national_mix != null ? this.national_mix.hashCode() : 0);
@@ -92,6 +99,7 @@ public final class ViewModel {
     }
 
     public static final class Builder {
+        public Mode mode;
         public String national_name;
         public java.util.List<IntensityPoint> national_intensity;
         public java.util.List<GenerationMixPoint> national_mix;
@@ -101,6 +109,7 @@ public final class ViewModel {
 
         public ViewModel build() {
             return new ViewModel(
+                mode,
                 national_name,
                 national_intensity,
                 national_mix,
