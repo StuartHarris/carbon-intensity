@@ -44,7 +44,7 @@ pub struct Capabilities {
     render: Render<Event>,
     location: GetLocation<Event>,
     time: Time<Event>,
-    pub http: Http<Event>,
+    http: Http<Event>,
 }
 
 #[derive(Default)]
@@ -240,7 +240,7 @@ mod tests {
         // resolve a simulated postcode response
         let simulated_response: PostcodeResponse =
             serde_json::from_str(include_str!("./fixtures/postcode.json")).unwrap();
-        let response = HttpResponse::status(200).json(&simulated_response).build();
+        let response = HttpResponse::ok().json(&simulated_response).build();
         let update = app.resolve(&mut request, response).unwrap();
 
         // check the postcode response raises a SetPostcode event
@@ -285,7 +285,7 @@ mod tests {
         // resolve a simulated regional response
         let simulated_response: RegionalResponse =
             serde_json::from_str(include_str!("./fixtures/regional.json")).unwrap();
-        let response = HttpResponse::status(200).json(&simulated_response).build();
+        let response = HttpResponse::ok().json(&simulated_response).build();
         let update = app.resolve(&mut request, response).unwrap();
 
         // check the regional response raises a SetRegional event
@@ -417,7 +417,7 @@ mod tests {
         // resolve a simulated intensity response
         let simulated_response: NationalResponse =
             serde_json::from_str(include_str!("./fixtures/national_intensity.json")).unwrap();
-        let response = HttpResponse::status(200).json(&simulated_response).build();
+        let response = HttpResponse::ok().json(&simulated_response).build();
         let update = app.resolve(&mut request, response).unwrap();
 
         // check the intensity response raises a SetNational event
@@ -470,7 +470,7 @@ mod tests {
         // resolve a simulated generation response
         let simulated_response: NationalMixResponse =
             serde_json::from_str(include_str!("./fixtures/national_mix.json")).unwrap();
-        let response = HttpResponse::status(200).json(&simulated_response).build();
+        let response = HttpResponse::ok().json(&simulated_response).build();
         let update = app.resolve(&mut request, response).unwrap();
 
         // check the intensity response raises a SetNational event

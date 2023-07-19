@@ -10,5 +10,5 @@ license = "Apache-2.0"
 rust-version = "1.66"
 
 [workspace.dependencies]
-anyhow = "1.0.71"
-serde = "1.0.167"
+anyhow = "1.0.72"
+serde = "1.0.171"
