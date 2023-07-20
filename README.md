@@ -22,15 +22,18 @@ to get the local intensity and generation mix forecast for the next 24 hours.
 
 ## iOS
 
-The iOS app is written in Swift, with Swift UI, using Swift Charts for
-displaying the data.
+The iOS app is written in Swift, with
+[Swift UI](https://developer.apple.com/xcode/swiftui/) and
+[Swift Charts](https://developer.apple.com/documentation/charts) for displaying
+the data.
 
 ## Android
 
-The Android app is written in Kotlin, with Jetpack Compose, and the graphs are
-hand built.
+The Android app is written in Kotlin, with
+[Jetpack Compose](https://developer.android.com/jetpack/compose), and the graphs
+are hand built.
 
 ## Web
 
-The web app is written in TypeScript, with Remix, and the graphs use
-[Chart.js](https://www.chartjs.org/).
+The web app is written in TypeScript, with [Remix](https://remix.run/), and the
+graphs use [Chart.js](https://www.chartjs.org/).
