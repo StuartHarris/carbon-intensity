@@ -20,20 +20,32 @@ to get the local intensity and generation mix forecast for the next 24 hours.
 
 ![flow](./docs/flow.svg)
 
+## Core
+
+The [core](./shared/) is written in Rust, with
+[Crux](https://github.com/redbadger/crux)
+
+## Web
+
+The [web shell](./web-remix/) is written in TypeScript, with
+[Remix](https://remix.run/), and the graphs use
+[Chart.js](https://www.chartjs.org/).
+
+<img src="./docs/web.webp" height="500">
+
 ## iOS
 
-The iOS app is written in Swift, with
+The [iOS shell](./iOS/) is written in Swift, with
 [Swift UI](https://developer.apple.com/xcode/swiftui/) and
 [Swift Charts](https://developer.apple.com/documentation/charts) for displaying
 the data.
 
+<img src="./docs/iOS.webp" height="500">
+
 ## Android
 
-The Android app is written in Kotlin, with
+The [Android shell](./Android/) is written in Kotlin, with
 [Jetpack Compose](https://developer.android.com/jetpack/compose), and the graphs
 are hand built.
 
-## Web
-
-The web app is written in TypeScript, with [Remix](https://remix.run/), and the
-graphs use [Chart.js](https://www.chartjs.org/).
+<img src="./docs/android.webp" height="500">
