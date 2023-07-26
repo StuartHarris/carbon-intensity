@@ -31,6 +31,10 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+
+    sourceSets {
+        main.java.srcDirs += "${projectDir}/../../shared_types/generated/java"
+    }
 }
 
 dependencies {
@@ -63,36 +67,40 @@ afterEvaluate {
         }
         def buildType = "${variant.buildType.name.capitalize()}"
 
-        tasks["bindGen"].dependsOn(tasks["typesGen"])
-
-        tasks["compileDebugKotlin"].dependsOn(tasks["bindGen"])
+        tasks["compileDebugKotlin"].dependsOn(tasks["typesGen"], tasks["bindGen"])
 
         tasks["generate${productFlavor}${buildType}Assets"].dependsOn(tasks["cargoBuild"])
     }
 }
 
 task bindGen(type: Exec) {
-    def outDir = "${projectDir}/src/main/java"
+    def outDir = "${projectDir}/../../shared_types/generated/java"
     workingDir "../../"
-    commandLine(
-            "sh", "-c",
-            """
-            cargo build -p shared && \
-            target/debug/uniffi-bindgen generate shared/src/shared.udl \
-            --language kotlin \
-            --out-dir $outDir
-            """
-)
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine(
+                "cmd", "/c",
+                "cargo build -p shared && target\\debug\\uniffi-bindgen generate shared\\src\\shared.udl " +
+                        "--language kotlin " +
+                        "--out-dir " + outDir.replace('/', '\\')
+        )
+    } else {
+        commandLine(
+                "sh", "-c",
+                """\
+                cargo build -p shared && \
+                target/debug/uniffi-bindgen generate shared/src/shared.udl \
+                --language kotlin \
+                --out-dir $outDir
+                """
+        )
+    }
 }
 
 task typesGen(type: Exec) {
-    def outDir = "${projectDir}/src/main/java/"
-    def srcDir = "shared_types/generated/java/"
     workingDir "../../"
-    commandLine("sh", "-c",
-            """
-            cargo build -p shared_types && \
-            rsync -av --delete $srcDir/ $outDir/ \
-            """
-    )
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine("cmd", "/c", "cargo build -p shared_types")
+    } else {
+        commandLine("sh", "-c", "cargo build -p shared_types")
+    }
 }
