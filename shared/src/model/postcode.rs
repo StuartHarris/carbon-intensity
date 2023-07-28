@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use super::location::Coordinate;
+use crate::capabilities::location::Coordinate;
 
 pub const BASE_URL: &str = "https://api.postcodes.io";
 

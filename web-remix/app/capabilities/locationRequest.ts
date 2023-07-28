@@ -1,27 +1,20 @@
-import {
-  LocationRequest,
-  LocationResponse,
-  Coordinate,
-} from "shared_types/types/shared_types";
+import type { LocationRequest } from "shared_types/types/shared_types";
+import { Coordinate, LocationResponse } from "shared_types/types/shared_types";
 
 export async function locationRequest(
   _locationRequest: LocationRequest
 ): Promise<LocationResponse> {
-  const location = await getLocation();
-  const locationResponse = new LocationResponse(location);
-  return locationResponse;
-}
-
-function getLocation(): Promise<Coordinate> {
   return new Promise((resolve, reject) => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position: GeolocationPosition) => {
           if (position) {
             resolve(
-              new Coordinate(
-                position.coords.latitude,
-                position.coords.longitude
+              new LocationResponse(
+                new Coordinate(
+                  position.coords.latitude,
+                  position.coords.longitude
+                )
               )
             );
           } else {

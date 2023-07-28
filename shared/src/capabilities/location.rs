@@ -1,9 +1,13 @@
-use crux_macros::Capability;
 use serde::{Deserialize, Serialize};
 
 use crux_core::capability::{CapabilityContext, Operation};
+use crux_macros::Capability;
 
-use crate::model::location::Coordinate;
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
+pub struct Coordinate {
+    pub latitude: f64,
+    pub longitude: f64,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct LocationRequest;

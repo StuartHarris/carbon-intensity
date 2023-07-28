@@ -163,9 +163,13 @@ impl crux_core::App for App {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{
-        location::Location, national_intensity::NationalResponse,
-        national_mix::NationalMixResponse, postcode::PostcodeResponse, regional::RegionalResponse,
+    use crate::{
+        capabilities,
+        model::{
+            location::Location, national_intensity::NationalResponse,
+            national_mix::NationalMixResponse, postcode::PostcodeResponse,
+            regional::RegionalResponse,
+        },
     };
     use crux_core::{assert_effect, testing::AppTester};
     use crux_http::{
@@ -207,7 +211,7 @@ mod tests {
         // resolve the location request with a simulated location response
         let mut request = requests.next().unwrap();
         let response = LocationResponse {
-            location: Some(Coordinate {
+            location: Some(capabilities::location::Coordinate {
                 latitude: 51.403366,
                 longitude: -0.298302,
             }),

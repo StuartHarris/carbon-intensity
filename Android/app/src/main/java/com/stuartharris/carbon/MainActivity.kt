@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -41,13 +40,13 @@ import com.stuartharris.carbon.chart.MixChart
 import com.stuartharris.carbon.shared.handleResponse
 import com.stuartharris.carbon.shared.processEvent
 import com.stuartharris.carbon.shared.view
-import com.stuartharris.carbon.shared_types.Coordinate
 import com.stuartharris.carbon.shared_types.Effect
-import com.stuartharris.carbon.shared_types.HttpResponse
-import com.stuartharris.carbon.shared_types.LocationResponse
+import com.stuartharris.carbon.shared_types.Event
 import com.stuartharris.carbon.shared_types.Mode
+import com.stuartharris.carbon.shared_types.Request
 import com.stuartharris.carbon.shared_types.Requests
 import com.stuartharris.carbon.shared_types.TimeResponse
+import com.stuartharris.carbon.shared_types.ViewModel
 import com.stuartharris.carbon.ui.theme.CarbonIntensityTheme
 import dagger.Module
 import dagger.Provides
@@ -62,12 +61,8 @@ import kotlinx.coroutines.launch
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Optional
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.stuartharris.carbon.shared_types.Event as Evt
-import com.stuartharris.carbon.shared_types.Request as Req
-import com.stuartharris.carbon.shared_types.ViewModel as MyViewModel
 
 @HiltAndroidApp
 class CarbonIntensityApplication : Application()
@@ -108,23 +103,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class Outcome {
-    data class Http(val res: HttpResponse) : Outcome()
-    data class Location(val res: LocationResponse) : Outcome()
-    data class Time(val res: TimeResponse) : Outcome()
-}
-
-sealed class CoreMessage {
-    data class Event(val event: Evt) : CoreMessage()
-    data class Response(val uuid: List<Byte>, val outcome: Outcome) : CoreMessage()
-}
-
 @HiltViewModel
-class Model @Inject constructor(
+class Core @Inject constructor(
     private val locationTracker: LocationTracker
-) : ViewModel() {
-    var view: MyViewModel by mutableStateOf(
-        MyViewModel(
+) : androidx.lifecycle.ViewModel() {
+    var view: ViewModel by mutableStateOf(
+        ViewModel(
             Mode.National(), "", emptyList(), emptyList(), "", emptyList(), emptyList()
         )
     )
@@ -134,54 +118,58 @@ class Model @Inject constructor(
 
     init {
         viewModelScope.launch {
-            update(CoreMessage.Event(Evt.GetNational()))
+            update(Event.GetNational())
         }
     }
 
-    suspend fun update(msg: CoreMessage) {
-        val requests: List<Req> = when (msg) {
-            is CoreMessage.Event -> Requests.bincodeDeserialize(
-                processEvent(msg.event.bincodeSerialize())
-            )
+    suspend fun update(event: Event) {
+        val effects = processEvent(event.bincodeSerialize())
+        processEffects(effects)
+    }
 
-            is CoreMessage.Response -> Requests.bincodeDeserialize(
-                handleResponse(
-                    msg.uuid.toByteArray(), when (msg.outcome) {
-                        is Outcome.Http -> msg.outcome.res.bincodeSerialize()
-                        is Outcome.Location -> msg.outcome.res.bincodeSerialize()
-                        is Outcome.Time -> msg.outcome.res.bincodeSerialize()
-                    }
-                )
-            )
+    private suspend fun processEffects(effects: ByteArray) {
+        val requests = Requests.bincodeDeserialize(effects)
+        for (request in requests) {
+            processRequest(request)
         }
+    }
 
-        for (req in requests) when (val effect = req.effect) {
+    private suspend fun processRequest(request: Request) {
+        when (val effect = request.effect) {
             is Effect.Render -> {
-                view = MyViewModel.bincodeDeserialize(view())
+                this.view = ViewModel.bincodeDeserialize(view())
             }
 
             is Effect.Http -> {
-                val response = http(
-                    httpClient, effect.value
-                )
-                update(CoreMessage.Response(req.uuid, Outcome.Http(response)))
+                val response = http(httpClient, effect.value)
+
+                val effects =
+                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+
+                processEffects(effects)
             }
 
+
             is Effect.GetLocation -> {
-                val loc = locationTracker.getCurrentLocation()
-                val response = LocationResponse(
-                    Optional.of(
-                        Coordinate(loc?.latitude, loc?.longitude)
-                    )
-                )
-                update(CoreMessage.Response(req.uuid, Outcome.Location(response)))
+                val response = locationTracker.getCurrentLocation()
+                if (response != null) {
+                    val effects =
+                        handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+
+                    processEffects(effects)
+                }
             }
 
             is Effect.Time -> {
-                val isoTime =
-                    ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+                val response =
+                    TimeResponse(
+                        ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+                    )
 
-                update(CoreMessage.Response(req.uuid, Outcome.Time(TimeResponse(isoTime))))
+                val effects =
+                    handleResponse(request.uuid.toByteArray(), response.bincodeSerialize())
+
+                processEffects(effects)
             }
         }
     }
@@ -189,7 +177,7 @@ class Model @Inject constructor(
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun View(model: Model = viewModel()) {
+fun View(core: Core = viewModel()) {
     val coroutineScope = rememberCoroutineScope()
 
     val locationPermissions = rememberMultiplePermissionsState(
@@ -208,7 +196,7 @@ fun View(model: Model = viewModel()) {
     ) {
         Text(text = "Carbon Intensity", fontSize = 30.sp, modifier = Modifier.padding(10.dp))
         Text(
-            text = if (model.view.mode == Mode.Local()) model.view.local_name else model.view.national_name,
+            text = if (core.view.mode == Mode.Local()) core.view.local_name else core.view.national_name,
             modifier = Modifier.padding(10.dp)
         )
         Box(
@@ -224,14 +212,14 @@ fun View(model: Model = viewModel()) {
                             .fillMaxWidth()
                             .height(300.dp)
                             .padding(vertical = 4.dp),
-                        points = if (model.view.mode == Mode.Local()) model.view.local_intensity else model.view.national_intensity,
+                        points = if (core.view.mode == Mode.Local()) core.view.local_intensity else core.view.national_intensity,
                     )
                     MixChart(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp)
                             .padding(vertical = 12.dp),
-                        points = if (model.view.mode == Mode.Local()) model.view.local_mix else model.view.national_mix,
+                        points = if (core.view.mode == Mode.Local()) core.view.local_mix else core.view.national_mix,
                     )
                 }
                 Row {
@@ -251,14 +239,14 @@ fun View(model: Model = viewModel()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
                         onClick = {
-                            coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetNational())) }
+                            coroutineScope.launch { core.update(Event.GetNational()) }
                         }, colors = ButtonDefaults.buttonColors(
                             containerColor = Color.hsl(44F, 1F, 0.77F)
                         )
                     ) { Text(text = "National", color = Color.DarkGray) }
                     Button(
                         onClick = {
-                            coroutineScope.launch { model.update(CoreMessage.Event(Evt.GetLocal())) }
+                            coroutineScope.launch { core.update(Event.GetLocal()) }
                         }, colors = ButtonDefaults.buttonColors(
                             containerColor = Color.hsl(348F, 0.86F, 0.61F)
                         )

@@ -2,19 +2,6 @@ import Charts
 import SharedTypes
 import SwiftUI
 
-enum Outcome {
-    case http(HttpResponse)
-    case location(LocationResponse)
-    case time(TimeResponse)
-}
-
-typealias Uuid = [UInt8]
-
-enum Message {
-    case event(Event)
-    case response(Uuid, Outcome)
-}
-
 @MainActor
 class Model: ObservableObject {
     @Published var view = ViewModel(
@@ -28,48 +15,45 @@ class Model: ObservableObject {
     )
 
     init() {
-        update(msg: .event(.getNational))
+        update(event: .getNational)
     }
 
-    func update(msg: Message) {
-        var requests: [Request]
+    func update(event: Event) {
+        let effects = [UInt8](processEvent(Data(try! event.bincodeSerialize())))
 
-        switch msg {
-        case let .event(event):
-            requests = try! .bincodeDeserialize(
-                input: [UInt8](processEvent(Data(try! event.bincodeSerialize())))
-            )
-        case let .response(uuid, .http(response)):
-            requests = try! .bincodeDeserialize(
-                input: [UInt8](handleResponse(Data(uuid), Data(try! response.bincodeSerialize())))
-            )
-        case let .response(uuid, .time(response)):
-            requests = try! .bincodeDeserialize(
-                input: [UInt8](handleResponse(Data(uuid), Data(try! response.bincodeSerialize())))
-            )
-        case let .response(uuid, .location(response)):
-            requests = try! .bincodeDeserialize(
-                input: [UInt8](handleResponse(Data(uuid), Data(try! response.bincodeSerialize())))
-            )
-        }
+        process_effects(effects)
+    }
 
+    func process_effects(_ effects: [UInt8]) {
+        let requests: [Request] = try! .bincodeDeserialize(input: effects)
         for request in requests {
-            switch request.effect {
-            case .render: view = try! ViewModel.bincodeDeserialize(input: [UInt8](CarbonIntensity.view()))
+            process_request(request)
+        }
+    }
 
-            case let .http(httpReq):
-                Task {
-                    let res = try! await httpRequest(httpReq).get()
-                    update(msg: .response(request.uuid, .http(res)))
-                }
+    func process_request(_ request: Request) {
+        switch request.effect {
+        case .render:
+            view = try! .bincodeDeserialize(input: [UInt8](CarbonIntensity.view()))
+        case let .http(req):
+            Task {
+                let response = try! await httpRequest(req).get()
 
-            case .time:
-                update(msg: .response(request.uuid, .time(TimeResponse(value: Date().ISO8601Format()))))
+                let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
 
-            case let .getLocation(req):
-                let res = try! locationRequest(req).get()
-                update(msg: .response(request.uuid, .location(res)))
+                process_effects(effects)
             }
+        case .time:
+            let response = TimeResponse(value: Date().ISO8601Format())
+            let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+
+            process_effects(effects)
+        case let .getLocation(req):
+            let response = try! locationRequest(req).get()
+
+            let effects = [UInt8](handleResponse(Data(request.uuid), Data(try! response.bincodeSerialize())))
+
+            process_effects(effects)
         }
     }
 }
@@ -179,10 +163,10 @@ struct ContentView: View {
             .chartForegroundStyleScale(fillColors)
             HStack {
                 ActionButton(label: "National", color: .yellow) {
-                    model.update(msg: .event(.getNational))
+                    model.update(event: .getNational)
                 }
                 ActionButton(label: "Local", color: .red) {
-                    model.update(msg: .event(.getLocal))
+                    model.update(event: .getLocal)
                 }
             }
         }

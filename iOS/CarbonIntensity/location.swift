@@ -16,11 +16,10 @@ func locationRequest(_: LocationRequest) -> Result<LocationResponse, LocationErr
     default:
         let currentLoc = locationManager.location
         if currentLoc != nil {
-            let coord = Coordinate(
+            return .success(LocationResponse(location: Coordinate(
                 latitude: currentLoc!.coordinate.latitude,
                 longitude: currentLoc!.coordinate.longitude
-            )
-            return .success(LocationResponse(location: coord))
+            )))
         }
         return .failure(.message("no location available"))
     }
